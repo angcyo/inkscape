@@ -16,14 +16,13 @@
  */
 
 #include <cstdint>
-#include <2geom/forward.h>
 #include <glibmm/i18n.h>
+#include <2geom/forward.h>
 
-#include "snapper.h"
-
-#include "display/control/canvas-item-quad.h"
 #include "display/control/canvas-item-curve.h"
 #include "display/control/canvas-item-ptr.h"
+#include "display/control/canvas-item-quad.h"
+#include "snapper.h"
 #include "ui/modifiers.h"
 #include "util-string/context-string.h"
 
@@ -78,8 +77,8 @@ private:
     sigc::scoped_connection _moved_connection;
     sigc::scoped_connection _click_connection;
     sigc::scoped_connection _ungrabbed_connection;
-    Inkscape::Modifiers::Modifier *mod_move_no_snapping = Inkscape::Modifiers::Modifier::get(Inkscape::Modifiers::Type::MOVE_NO_SNAPPING);
-
+    Inkscape::Modifiers::Modifier *mod_move_no_snapping =
+        Inkscape::Modifiers::Modifier::get(Inkscape::Modifiers::Type::MOVE_NO_SNAPPING);
 };
 
 // LPEs
