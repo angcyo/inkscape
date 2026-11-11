@@ -85,12 +85,10 @@ public:
     std::shared_ptr<Space::AnySpace> getDocumentColorSpace() const;
     bool setDocumentColorSpace(std::shared_ptr<Space::AnySpace> const &space);
 
-    std::string toDocumentColorString(Color const &color);
-    std::shared_ptr<Space::AnySpace> mapToStorageFormat(std::shared_ptr<Space::AnySpace> const &space) const;
+    std::string toDocumentColorString(Color const &color, std::shared_ptr<Space::AnySpace> object_space);
 private:
     void _refresh_resources();
     void _invalidate_caches();
-    std::shared_ptr<Space::AnySpace> _map_storage_format(std::shared_ptr<Space::AnySpace> const &space) const;
 
     SPDocument *_document = nullptr;
     std::vector<std::shared_ptr<ColorProfileLink>> _links;
@@ -100,7 +98,6 @@ private:
 
     mutable std::shared_ptr<Space::AnySpace> _document_space;
     mutable std::map<std::string, std::shared_ptr<Space::CMS>> _spaces;
-    mutable std::map<int, std::shared_ptr<Space::AnySpace>> _storage_map_cache;
 
 protected:
     friend class ColorProfileLink;

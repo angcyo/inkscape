@@ -129,7 +129,7 @@ std::string AnySpace::toString(std::vector<double> const &values, bool opacity) 
  * Called from the main program to set an override, if needed, for this type
  * of color space and how it should be converted to a string in the above toString function.
  */
-void AnySpace::overrideOutputFormat(std::shared_ptr<AnySpace> space)
+void AnySpace::setOutputFormat(std::shared_ptr<AnySpace> space)
 {
     _output_space = std::move(space);
 }

@@ -121,16 +121,16 @@ public:
             && to_space->profileToSpace(io);
     }
 
-    void overrideOutputFormat(std::shared_ptr<AnySpace> space);
 protected:
     friend class Colors::Color;
 
     AnySpace(Type type, int components, std::string name, std::string shortName, std::string icon, bool spaceIsUnbounded = false);
 
+    void setOutputFormat(std::shared_ptr<AnySpace> space);
+
     bool isValidData(std::vector<double> const &values) const;
     uint32_t toRGBA(std::vector<double> const &values, double opacity = 1.0) const;
     std::string toString(std::vector<double> const &values, bool opacity = true) const;
-    virtual bool canToString() const { return true; }
 
     virtual bool overInk(std::vector<double> const &input) const { return false; }
     bool outOfGamut(std::vector<double> const &input, std::shared_ptr<AnySpace> to_space) const;

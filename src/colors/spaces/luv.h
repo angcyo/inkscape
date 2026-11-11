@@ -42,8 +42,6 @@ public:
     Luv(): XYZBase(Type::LUV, "Luv", "Luv", "luv") {}
     ~Luv() override = default;
 
-    bool canToString() const override { return false; }
-
     /**
      * Convert a color from the the Luv colorspace to the XYZ colorspace.
      */

@@ -456,47 +456,16 @@ bool DocumentCMS::setDocumentColorSpace(std::shared_ptr<Space::AnySpace> const &
 
 /**
  * Print the color out to a string suitable for this document using the configured storage format
+ *
+ * @arg color - The color to convert to a formatted string
+ * @arg object_space - The color space to target as the target object's space
  */
-std::string DocumentCMS::toDocumentColorString(Color const &color)
+std::string DocumentCMS::toDocumentColorString(Color const &color, std::shared_ptr<Space::AnySpace> object_space)
 {
-    auto target = mapToStorageFormat(color.getSpace());
-    if (target != color.getSpace()) {
-        return color.converted(target)->toString(false);
+    if (object_space != color.getSpace()) {
+        return color.converted(object_space)->toString(false);
     }
     return color.toString(false);
-}
-
-/**
- * Map the given space from a color picker, to the best storage color space which
- * will be used to encode the color into a string.
- */
-std::shared_ptr<Space::AnySpace> DocumentCMS::mapToStorageFormat(std::shared_ptr<Space::AnySpace> const &space) const
-{
-    if (!space) {
-        throw Colors::Space::ColorSpaceError("Color space must exist to be mapped.");
-    }
-    auto id = space->getId();
-    auto iter = _storage_map_cache.find(id);
-    if (iter == _storage_map_cache.end()) {
-        _storage_map_cache[id] = _map_storage_format(space);
-    }
-    return _storage_map_cache[id];
-}
-
-std::shared_ptr<Space::AnySpace> DocumentCMS::_map_storage_format(std::shared_ptr<Space::AnySpace> const &space) const
-{
-    if (auto picker = Manager::get().findPicker(space->getType())) {
-        auto prefs = Preferences::get();
-        auto format_str = prefs->getString(picker->getPrefPath("format"), "");
-        if (format_str.empty()) {
-            if (picker->getType() == Space::Type::CMS) {
-                return space;
-            }
-        } else if (auto found = Manager::get().find(format_str)) {
-            return found;
-        }
-    }
-    return getDocumentColorSpace();
 }
 
 /**
@@ -504,7 +473,6 @@ std::shared_ptr<Space::AnySpace> DocumentCMS::_map_storage_format(std::shared_pt
  */
 void DocumentCMS::_invalidate_caches()
 {
-    _storage_map_cache.clear();
     _document_space.reset();
 }
 

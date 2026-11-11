@@ -23,8 +23,6 @@ public:
 
     Gray(): RGBBase(Type::Gray, "Gray", "Gray", "gray") {}
 
-    bool canToString() const override { return false; }
-
     /**
      * Convert a single gray channel into an RGB
      */

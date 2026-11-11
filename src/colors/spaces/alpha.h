@@ -32,8 +32,6 @@ public:
         static auto gray_profile = Colors::CMS::Profile::create_gray();
         return gray_profile;
     }
-
-    bool canToString() const override { return false; }
 };
 
 } // namespace Inkscape::Colors::Space

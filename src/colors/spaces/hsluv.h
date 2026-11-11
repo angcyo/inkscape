@@ -32,8 +32,6 @@ public:
     HSLuv(): XYZBase(Type::HSLUV, "HSLuv", "HSLuv", "hsluv") {}
     ~HSLuv() override = default;
 
-    bool canToString() const override { return false; }
-
     /**
      * Convert a color from the the HSLuv colorspace to the XYZ65 colorspace
      */

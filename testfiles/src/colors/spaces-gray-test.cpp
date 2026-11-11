@@ -34,6 +34,11 @@ INSTANTIATE_TEST_SUITE_P(ColorsSpacesGray, normalize, testing::Values(
     _P(inb, Gray, { 0.0 }, Gray, { 0.0 }),
     _P(inb, Gray, { 1.0 }, Gray, { 1.0 })
 ));
+
+INSTANTIATE_TEST_SUITE_P(ColorsSpacesCmyk, toString, testing::Values(
+    _P(out, Gray, { 0.5, 0.16 }, "#80808004"),
+    _P(out, Gray, { 0.5 },       "#808080")
+));
 // clang-format on
 
 TEST(ColorsSpacesGray, randomConversion)

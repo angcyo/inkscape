@@ -80,6 +80,7 @@ void ColorEntry::_onColorChanged()
     }
 
     auto color = _colors->getAverage();
+    auto space = _colors->getBestSpace();
 
     // Hide icon if space is already RGB, BEFORE converting to rgb
     if (color.getSpace() == rgb) {
@@ -90,7 +91,7 @@ void ColorEntry::_onColorChanged()
 
     // If there's no _doc, then we have to fallback to rgb only because we can't be sure if the color's space
     // can be put into a string. If it can't it will throw a ColorSpaceError on the toString below.
-    color = *color.converted((_show_real && _doc) ? _doc->getDocumentCMS().mapToStorageFormat(color.getSpace()) : rgb);
+    color = *color.converted((_show_real && _doc) ? space : rgb);
 
     if (Colors::out_of_gamut(color, color.getSpace())) {
         _signal_out_of_gamut.emit(Glib::ustring::compose(_("Color %1 is out of gamut for %2.\nIt has been mapped to sRGB gamut."), color.toString().c_str(), color.getSpace()->getName().c_str()));
