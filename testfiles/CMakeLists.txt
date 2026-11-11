@@ -123,6 +123,7 @@ set(TEST_SOURCES
     multi-marker-color-wheel-test
     pixel_align-test
     trace-quantize-test
+    trace-autotrace-test
     ${LPE_TESTS_64bit}
     ${LIBNRTYPE_TESTS}
     )
