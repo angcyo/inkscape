@@ -122,6 +122,7 @@ set(TEST_SOURCES
     object-colors-test
     multi-marker-color-wheel-test
     pixel_align-test
+    trace-quantize-test
     ${LPE_TESTS_64bit}
     ${LIBNRTYPE_TESTS}
     )
