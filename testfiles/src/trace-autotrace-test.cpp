@@ -2,14 +2,15 @@
 /*
  * Tests for Trace Bitmap's Autotrace engine glue.
  */
-#include <gtest/gtest.h>
 #include <algorithm>
 #include <cmath>
 #include <set>
-#include <2geom/pathvector.h>
 #include <gdkmm/pixbuf.h>
 #include <gdkmm/wrap_init.h>
 #include <glibmm/init.h>
+#include <gtest/gtest.h>
+#include <2geom/pathvector.h>
+
 #include "async/progress.h"
 #include "trace/autotrace/inkscape-autotrace.h"
 
@@ -45,7 +46,10 @@ Glib::RefPtr<Gdk::Pixbuf> ringImage()
 }
 
 // Whether a point is inside a fill (nonzero rule) of a path vector.
-bool filled(Geom::PathVector const &pv, Geom::Point p) { return pv.winding(p) != 0; }
+bool filled(Geom::PathVector const &pv, Geom::Point p)
+{
+    return pv.winding(p) != 0;
+}
 
 } // namespace
 
@@ -71,9 +75,9 @@ TEST(TraceAutotraceTest, HolesAndOrder)
     ASSERT_TRUE(ring && dot);
 
     // The ring keeps its hole: the inside of the O isn't blue, outside neither.
-    EXPECT_TRUE(filled(*ring, {60, 25}));   // on the ring
-    EXPECT_FALSE(filled(*ring, {60, 42}));  // in the hole, between ring and dot
-    EXPECT_FALSE(filled(*ring, {5, 5}));    // outside
+    EXPECT_TRUE(filled(*ring, {60, 25}));  // on the ring
+    EXPECT_FALSE(filled(*ring, {60, 42})); // in the hole, between ring and dot
+    EXPECT_FALSE(filled(*ring, {5, 5}));   // outside
     EXPECT_TRUE(filled(*dot, {60, 60}));
 }
 

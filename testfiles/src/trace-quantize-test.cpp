@@ -2,23 +2,27 @@
 /*
  * Tests for the color quantization used by Trace Bitmap's multiple scans.
  */
-#include <gtest/gtest.h>
 #include <algorithm>
 #include <random>
 #include <set>
+#include <gtest/gtest.h>
+
+#include "trace/filterset.h"
 #include "trace/imagemap.h"
 #include "trace/quantize.h"
-#include "trace/filterset.h"
 
 using namespace Inkscape::Trace;
 
 namespace {
 
-RGB const RED   = {0xb2, 0x00, 0x2d};
-RGB const BLUE  = {0x1d, 0x3f, 0x8f};
+RGB const RED = {0xb2, 0x00, 0x2d};
+RGB const BLUE = {0x1d, 0x3f, 0x8f};
 RGB const WHITE = {0xff, 0xff, 0xff};
 
-bool same(RGB a, RGB b) { return a.r == b.r && a.g == b.g && a.b == b.b; }
+bool same(RGB a, RGB b)
+{
+    return a.r == b.r && a.g == b.g && a.b == b.b;
+}
 
 // White, with a red block on the left and a blue one on the right.
 RgbMap threeColors(int w = 60, int h = 40)
@@ -144,7 +148,7 @@ TEST(TraceQuantizeTest, RimShadesDropped)
             // Distance outside a 40x40 square: 0 inside, rising over 3 pixels of soft edge.
             int d = std::max({20 - x, x - 59, 20 - y, y - 59, 0});
             double t = std::min(d, 4) / 4.0; // 0 = blue, 1 = white
-            auto mix = [t] (int a, int b) { return (unsigned char)(a + (b - a) * t + 0.5); };
+            auto mix = [t](int a, int b) { return (unsigned char)(a + (b - a) * t + 0.5); };
             map.setPixel(x, y, {mix(BLUE.r, 255), mix(BLUE.g, 255), mix(BLUE.b, 255)});
         }
     }

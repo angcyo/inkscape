@@ -9,17 +9,18 @@
  *
  * Released under GNU GPL v2+, read the file 'COPYING' for more information.
  */
-#include <cstdlib>
-#include <memory>
-#include <vector>
+#include "quantize.h"
+
 #include <algorithm>
 #include <cassert>
 #include <cstdio>
+#include <cstdlib>
+#include <memory>
+#include <vector>
 #include <glib.h>
 
-#include "pool.h"
 #include "imagemap.h"
-#include "quantize.h"
+#include "pool.h"
 
 namespace Inkscape {
 namespace Trace {
@@ -468,7 +469,9 @@ Ocnode *octreeBuild(Pool<Ocnode> &pool, RgbMap const &rgbmap, int ncolor)
         node->rgb.r = key >> (2 * HIST_BITS);
         node->rgb.g = (key >> HIST_BITS) & ((1u << HIST_BITS) - 1);
         node->rgb.b = key & ((1u << HIST_BITS) - 1);
-        node->rs = bin.rs; node->gs = bin.gs; node->bs = bin.bs;
+        node->rs = bin.rs;
+        node->gs = bin.gs;
+        node->bs = bin.bs;
         node->weight = bin.weight;
         node->nleaf = 1;
         node->mi = 0;
@@ -519,7 +522,7 @@ void octreeIndex(Ocnode *node, RGB *rgbpal, unsigned long *weights, int &index)
 int mergeCloseColors(RGB *rgbs, unsigned long *weights, int n)
 {
     constexpr int CLOSE = 3 * 10 * 10; // about 10 levels per channel
-    auto dist2 = [] (RGB a, RGB b) {
+    auto dist2 = [](RGB a, RGB b) {
         return (a.r - b.r) * (a.r - b.r) + (a.g - b.g) * (a.g - b.g) + (a.b - b.b) * (a.b - b.b);
     };
     while (n > 1) {
@@ -528,7 +531,9 @@ int mergeCloseColors(RGB *rgbs, unsigned long *weights, int n)
             for (int j = i + 1; j < n; j++) {
                 int d = dist2(rgbs[i], rgbs[j]);
                 if (d < bd) {
-                    bd = d; bi = i; bj = j;
+                    bd = d;
+                    bi = i;
+                    bj = j;
                 }
             }
         }
@@ -600,9 +605,8 @@ IndexedMap rgbMapQuantize(RgbMap const &rgbmap, int ncolor)
     int const nused = index;
 
     // stacking with increasing contrasts
-    std::sort(rgbs.get(), rgbs.get() + nused, [] (auto &ra, auto &rb) {
-        return (ra.r + ra.g + ra.b) < (rb.r + rb.g + rb.b);
-    });
+    std::sort(rgbs.get(), rgbs.get() + nused,
+              [](auto &ra, auto &rb) { return (ra.r + ra.g + ra.b) < (rb.r + rb.g + rb.b); });
 
     // make the new map
     // fill in the color lookup table
@@ -657,7 +661,13 @@ void refinePalette(RgbMap const &original, IndexedMap &imap)
     struct Sum
     {
         unsigned long r = 0, g = 0, b = 0, count = 0;
-        void add(RGB c) { r += c.r; g += c.g; b += c.b; count++; }
+        void add(RGB c)
+        {
+            r += c.r;
+            g += c.g;
+            b += c.b;
+            count++;
+        }
     };
     std::vector<Sum> inner(n), all(n);
     for (int y = 0; y < height; y++) {
@@ -682,7 +692,8 @@ void refinePalette(RgbMap const &original, IndexedMap &imap)
     for (int k = 0; k < n; k++) {
         auto const &s = inner[k].count ? inner[k] : all[k];
         if (s.count) {
-            imap.clut[k] = {(unsigned char)((s.r + s.count / 2) / s.count), (unsigned char)((s.g + s.count / 2) / s.count),
+            imap.clut[k] = {(unsigned char)((s.r + s.count / 2) / s.count),
+                            (unsigned char)((s.g + s.count / 2) / s.count),
                             (unsigned char)((s.b + s.count / 2) / s.count)};
         }
     }
@@ -722,7 +733,7 @@ void dropBlendColors(RgbMap const &rgbmap, IndexedMap &imap)
             }
         }
     }
-    auto thin = [&] (int k) { return total[k] > 0 && onEdge[k] * 2 > total[k]; };
+    auto thin = [&](int k) { return total[k] > 0 && onEdge[k] * 2 > total[k]; };
 
     // For each thin color, the pair of colors filling areas of their own that it mixes.
     auto const &pal = imap.clut;
@@ -743,11 +754,13 @@ void dropBlendColors(RgbMap const &rgbmap, IndexedMap &imap)
                 if (len2 == 0) {
                     continue;
                 }
-                double t = ((pal[c].r - pal[a].r) * abr + (pal[c].g - pal[a].g) * abg + (pal[c].b - pal[a].b) * abb) / len2;
+                double t =
+                    ((pal[c].r - pal[a].r) * abr + (pal[c].g - pal[a].g) * abg + (pal[c].b - pal[a].b) * abb) / len2;
                 if (t <= 0.02 || t >= 0.98) {
                     continue;
                 }
-                double er = pal[c].r - (pal[a].r + t * abr), eg = pal[c].g - (pal[a].g + t * abg), eb = pal[c].b - (pal[a].b + t * abb);
+                double er = pal[c].r - (pal[a].r + t * abr), eg = pal[c].g - (pal[a].g + t * abg),
+                       eb = pal[c].b - (pal[a].b + t * abb);
                 double e = er * er + eg * eg + eb * eb;
                 // Within a tenth of the two colors' distance from the line between them.
                 // A rim is much smaller than the two areas it lies between; colors
@@ -814,7 +827,7 @@ void snapBlendedEdges(RgbMap const &rgbmap, IndexedMap &imap)
     }
 
     auto const &pal = imap.clut;
-    auto dist2 = [] (int r, int g, int b, RGB p) {
+    auto dist2 = [](int r, int g, int b, RGB p) {
         return (r - p.r) * (r - p.r) + (g - p.g) * (g - p.g) + (b - p.b) * (b - p.b);
     };
 
@@ -842,7 +855,8 @@ void snapBlendedEdges(RgbMap const &rgbmap, IndexedMap &imap)
             for (int dy = -1; dy <= 1 && !edge; dy++) {
                 for (int dx = -1; dx <= 1; dx++) {
                     int xx = x + dx, yy = y + dy;
-                    if (xx >= 0 && yy >= 0 && xx < width && yy < height && imap.pixels[(size_t)yy * width + xx] != own) {
+                    if (xx >= 0 && yy >= 0 && xx < width && yy < height &&
+                        imap.pixels[(size_t)yy * width + xx] != own) {
                         edge = true;
                         break;
                     }

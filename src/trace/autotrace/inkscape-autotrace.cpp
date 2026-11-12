@@ -11,13 +11,14 @@
  * Released under GNU GPL v2+, read the file 'COPYING' for more information.
  *
  */
+#include "inkscape-autotrace.h"
+
 #include <cstdlib>
 #include <deque>
 #include <iomanip>
-#include <2geom/path-sink.h>
 #include <glibmm/i18n.h>
+#include <2geom/path-sink.h>
 
-#include "inkscape-autotrace.h"
 #include "async/progress.h"
 #include "trace/filterset.h"
 #include "trace/imagemap.h"
@@ -36,7 +37,10 @@ namespace {
 struct at_splines_deleter { void operator()(at_splines_type *p) { at_splines_free(p); }; };
 using at_splines_uniqptr = std::unique_ptr<at_splines_type, at_splines_deleter>;
 
-struct at_fitting_opts_deleter { void operator()(at_fitting_opts_type *p) { at_fitting_opts_free(p); }; };
+struct at_fitting_opts_deleter
+{
+    void operator()(at_fitting_opts_type *p) { at_fitting_opts_free(p); };
+};
 using at_fitting_opts_uniqptr = std::unique_ptr<at_fitting_opts_type, at_fitting_opts_deleter>;
 
 /**
@@ -87,9 +91,9 @@ Glib::RefPtr<Gdk::Pixbuf> to_rgb8_packed(Glib::RefPtr<Gdk::Pixbuf> const &pixbuf
  */
 Glib::RefPtr<Gdk::Pixbuf> prequantize(Glib::RefPtr<Gdk::Pixbuf> const &pb, int ncolors, at_color background)
 {
-    int width  = pb->get_width();
+    int width = pb->get_width();
     int height = pb->get_height();
-    auto data  = pb->get_pixels(); // packed RGB8, see to_rgb8_packed
+    auto data = pb->get_pixels(); // packed RGB8, see to_rgb8_packed
 
     auto map = RgbMap(width, height);
     for (size_t i = 0; i < map.pixels.size(); i++) {
@@ -144,7 +148,8 @@ Glib::RefPtr<Gdk::Pixbuf> AutotraceTracingEngine::preview(Glib::RefPtr<Gdk::Pixb
     // The image with its colors reduced, exactly as Autotrace will trace it (see trace()).
     auto pb = to_rgb8_packed(pixbuf);
     if (opts->color_count > 0) {
-        pb = prequantize(pb, opts->color_count, opts->background_color ? *opts->background_color : at_color{255, 255, 255});
+        pb = prequantize(pb, opts->color_count,
+                         opts->background_color ? *opts->background_color : at_color{255, 255, 255});
     }
     return pb;
 }
@@ -157,7 +162,8 @@ TraceResult AutotraceTracingEngine::trace(Glib::RefPtr<Gdk::Pixbuf> const &pixbu
     // not to reduce them again.
     auto runopts = at_fitting_opts_uniqptr(at_fitting_opts_copy(opts));
     if (opts->color_count > 0) {
-        pb = prequantize(pb, opts->color_count, opts->background_color ? *opts->background_color : at_color{255, 255, 255});
+        pb = prequantize(pb, opts->color_count,
+                         opts->background_color ? *opts->background_color : at_color{255, 255, 255});
         runopts->color_count = 0;
     }
     if (pb->get_rowstride() != pb->get_width() * 3) {
@@ -174,11 +180,10 @@ TraceResult AutotraceTracingEngine::trace(Glib::RefPtr<Gdk::Pixbuf> const &pixbu
     auto sub_trace = Async::SubProgress(throttled, 0.0, 0.8);
 
     auto splines = at_splines_uniqptr(at_splines_new_full(
-        &bitmap, runopts.get(),
-        nullptr, nullptr,
-        [] (gfloat frac, gpointer data) { reinterpret_cast<decltype(sub_trace)*>(data)->report(frac); }, &sub_trace,
-        [] (gpointer data) -> gboolean { return !reinterpret_cast<decltype(sub_trace)*>(data)->keepgoing(); }, &sub_trace
-    ));
+        &bitmap, runopts.get(), nullptr, nullptr,
+        [](gfloat frac, gpointer data) { reinterpret_cast<decltype(sub_trace) *>(data)->report(frac); }, &sub_trace,
+        [](gpointer data) -> gboolean { return !reinterpret_cast<decltype(sub_trace) *>(data)->keepgoing(); },
+        &sub_trace));
     // at_output_write_func wfunc = at_output_get_handler_by_suffix("svg");
     // at_spline_writer *wfunc = at_output_get_handler_by_suffix("svg");
     // at_splines_write(wfunc, stdout, "", NULL, splines, NULL, NULL);
@@ -192,7 +197,7 @@ TraceResult AutotraceTracingEngine::trace(Glib::RefPtr<Gdk::Pixbuf> const &pixbu
 
     int height = splines->height;
 
-    auto get_style = [&] (at_spline_list_type const &list) {
+    auto get_style = [&](at_spline_list_type const &list) {
         char color[10];
         safeprintf(color, "#%02x%02x%02x;", list.color.r, list.color.g, list.color.b);
 
@@ -218,7 +223,9 @@ TraceResult AutotraceTracingEngine::trace(Glib::RefPtr<Gdk::Pixbuf> const &pixbu
     // around it.
     struct Item
     {
-        explicit Item(std::string style_) : style(std::move(style_)) {}
+        explicit Item(std::string style_)
+            : style(std::move(style_))
+        {}
         Item(Item const &) = delete; // a PathBuilder points into itself: never copy or move one
         std::string style;
         Geom::PathBuilder builder;

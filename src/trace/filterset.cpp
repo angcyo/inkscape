@@ -10,12 +10,14 @@
  *
  * Released under GNU GPL v2+, read the file 'COPYING' for more information.
  */
+#include "filterset.h"
+
 #include <algorithm>
 #include <cstdio>
 #include <cstdlib> // std::abs
 #include <vector>
+
 #include "imagemap-gdk.h"
-#include "filterset.h"
 #include "quantize.h"
 
 namespace Inkscape {
@@ -103,7 +105,8 @@ RgbMap rgbMapGaussian(RgbMap const &me)
                 auto p = rows[i] + 3 * (x - 2);
                 int const *w = gaussMatrix + 5 * i;
                 for (int j = 0; j < 5; j++, p += 3) {
-                    if (std::abs(p[0] - c[0]) <= edge && std::abs(p[1] - c[1]) <= edge && std::abs(p[2] - c[2]) <= edge) {
+                    if (std::abs(p[0] - c[0]) <= edge && std::abs(p[1] - c[1]) <= edge &&
+                        std::abs(p[2] - c[2]) <= edge) {
                         sr += w[j] * p[0];
                         sg += w[j] * p[1];
                         sb += w[j] * p[2];
@@ -112,7 +115,7 @@ RgbMap rgbMapGaussian(RgbMap const &me)
                 }
             }
             // sw >= 15: the pixel itself always counts.
-            dst[3 * x]     = (sr + sw / 2) / sw;
+            dst[3 * x] = (sr + sw / 2) / sw;
             dst[3 * x + 1] = (sg + sw / 2) / sw;
             dst[3 * x + 2] = (sb + sw / 2) / sw;
         }
