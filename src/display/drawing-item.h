@@ -13,9 +13,7 @@
 #ifndef INKSCAPE_DISPLAY_DRAWING_ITEM_H
 #define INKSCAPE_DISPLAY_DRAWING_ITEM_H
 
-#include <cstdint>
 #include <exception>
-#include <list>
 #include <memory>
 #include <optional>
 #include <type_traits>
@@ -35,6 +33,7 @@
 
 namespace Glib { class ustring; }
 
+struct FillStrokePaints;
 class SPStyle;
 class SPItem;
 
@@ -147,7 +146,7 @@ public:
     void setSensitive(bool sensitive);
 
     virtual void setStyle(SPStyle const *style, SPStyle const *context_style = nullptr);
-    virtual void setChildrenStyle(SPStyle const *context_style);
+    void setChildrenStyle(SPStyle const *context_style);
     void setOpacity(float opacity);
     void setOpacityOverride(std::optional<double> opacity);
     void setAntialiasing(Antialiasing antialias);
@@ -182,6 +181,13 @@ public:
     inline double getOpacity() const { return _opacity_override ? *_opacity_override : _opacity; }
     inline bool hasOpacity() const { return getOpacity() < 0.995; }
 
+private:
+    /** Set "context" paints, used for the SVG2 'context-fill' and 'context-stroke' paint values.
+     *
+     * @note For thread safety, this function must be called from the message queue of a Drawing, i.e., via defer().
+     */
+    virtual void _setContextPaints(FillStrokePaints const & /*context_paints*/) {}
+
 protected:
     enum class ChildType : unsigned char
     {
@@ -212,6 +218,18 @@ protected:
     virtual DrawingItem *_pickItem(Geom::Point const &p, double delta, Geom::OptIntRect const &area_world, unsigned flags) { return nullptr; }
     virtual bool _canClip() const { return false; }
     virtual void _dropPatternCache() {}
+
+    /** Recursively pass additional "context" paints to all children.
+     *
+     * @note For thread safety, this function must be called from the message queue of a Drawing, i.e., via defer().
+     */
+    void _setContextPaintsOnChildren(FillStrokePaints const &context_paints)
+    {
+        for (auto &child : _children) {
+            child._setContextPaints(context_paints);
+            child._setContextPaintsOnChildren(context_paints);
+        }
+    }
 
     Drawing &_drawing;
     DrawingItem *_parent;
