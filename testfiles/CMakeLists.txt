@@ -91,6 +91,7 @@ set(TEST_SOURCES
     object-set-test
     object-style-test
     page-management
+    path/path-outline-test
     path-reverse-lpe-test
     preferences-test
     rebase-hrefs-test

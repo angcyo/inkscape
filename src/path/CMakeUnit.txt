@@ -18,6 +18,7 @@ function(get_path_unit_lib)
                                  "livarot/PathConversion.cpp"
                                  "livarot/PathCutting.cpp"
                                  "livarot/PathOutline.cpp"
+                                 "livarot/PathSimplify.cpp"
                                  "livarot/PathStroke.cpp"
                                  "livarot/Path.cpp"
                                  "livarot/ShapeMisc.cpp"
