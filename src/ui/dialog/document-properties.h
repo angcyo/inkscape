@@ -182,7 +182,9 @@ private:
     Glib::RefPtr<Gio::ListStore<LinkedProfileItem>> _LinkedProfileModel;
     Glib::RefPtr<Gtk::SignalListItemFactory> _LinkedProfileFactory;
     Glib::RefPtr<Gtk::SingleSelection> _LinkedSelectionModel;
-    Gtk::CheckButton _DefaultGroup;
+    Gtk::ToggleButton _DefaultGroup;
+    Gtk::Button _ResetDefault; 
+    //TODO: save the very first colorprofile before any modificaions to reset to it 
     //---------------------------------------------------------------
     Gtk::Button         _external_add_btn;
     Gtk::Button         _external_remove_btn;

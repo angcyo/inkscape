@@ -761,20 +761,6 @@ void DocumentProperties::build_cms()
 
     int row = 0;
 
-    label_link->set_hexpand();
-    label_link->set_halign(Gtk::Align::START);
-    label_link->set_valign(Gtk::Align::CENTER);
-    _page_cms->table().attach(*label_link, 0, row, 3, 1);
-
-    row++;
-
-    _LinkedProfileListView  = Gtk::make_managed<Gtk::ListView>();
-    _LinkedProfileListView->set_hexpand(true);
-    _LinkedProfileListView->set_valign(Gtk::Align::CENTER);
-    _page_cms->table().attach(*_LinkedProfileListView, 0, row, 3, 1);
-
-    row++;
-
     auto const spacer = Gtk::make_managed<Gtk::Box>(Gtk::Orientation::HORIZONTAL);
     spacer->set_size_request(SPACE_SIZE_X, SPACE_SIZE_Y);
 
@@ -806,6 +792,48 @@ void DocumentProperties::build_cms()
     _AvailableProfilesList.set_row_separator_func(sigc::mem_fun(*this, &DocumentProperties::_AvailableProfilesList_separator));
     
     //# Set up the Linked Profiles grid
+
+    row++;
+    auto const label_reset_box = Gtk::make_managed<Gtk::Box>(Gtk::Orientation::HORIZONTAL);
+    
+    _ResetDefault.set_tooltip_text(_("Reset to Original Color Profile"));
+    docprops_style_button(_ResetDefault, INKSCAPE_ICON("reset-settings"));
+    _ResetDefault.signal_clicked().connect([this](){
+        for (auto i =0; i< _LinkedProfileModel->get_n_items();i++){
+            auto item = _LinkedProfileModel->get_item(i);
+            if(!item){ 
+                continue;
+            }
+            auto LPitem = std::dynamic_pointer_cast<LinkedProfileItem>(item);
+            if(!LPitem) {
+                continue;
+            }
+            if(LPitem->is_default){
+                LPitem->is_default = false;
+                auto new_item = LinkedProfileItem::create(LPitem->name,LPitem->data_source,LPitem->is_default);
+                //TODO : unlink this from file as being default and reset back to the original color profile 
+                _LinkedProfileModel->splice(i,1,{new_item});
+                break;
+            }
+        }
+    });
+
+    label_link->set_hexpand();
+    label_link->set_halign(Gtk::Align::START);
+    label_link->set_valign(Gtk::Align::CENTER);
+
+    label_reset_box->append(*label_link);
+    label_reset_box->append(_ResetDefault);
+
+    _page_cms->table().attach(*label_reset_box, 0, row, 3, 1);
+
+    row++;
+
+    _LinkedProfileListView  = Gtk::make_managed<Gtk::ListView>();
+    _LinkedProfileListView->set_hexpand(true);
+    _LinkedProfileListView->set_valign(Gtk::Align::CENTER);
+    _page_cms->table().attach(*_LinkedProfileListView, 0, row, 3, 1);
+
     _LinkedProfileModel = Gio::ListStore<LinkedProfileItem>::create();
     _LinkedSelectionModel = Gtk::SingleSelection::create(_LinkedProfileModel);
     _LinkedProfileFactory = Gtk::SignalListItemFactory::create();
@@ -820,14 +848,15 @@ void DocumentProperties::build_cms()
         name_label->set_xalign(0);
         name_label->set_ellipsize(Pango::EllipsizeMode::END);
         
-        auto data_label = Gtk::make_managed<Gtk::Label>();
-        auto is_default_button = Gtk::make_managed<Gtk::CheckButton>();
+        // auto data_label = Gtk::make_managed<Gtk::Label>();
+        auto is_default_button = Gtk::make_managed<Gtk::ToggleButton>();
         is_default_button->set_group(this->_DefaultGroup);
+        is_default_button->set_label("Set Default");
         auto remove_btn = Gtk::make_managed<Gtk::Button>();
         remove_btn->set_tooltip_text(_("Unlink Profile"));
         docprops_style_button(*remove_btn, INKSCAPE_ICON("list-remove"));
         box->append(*name_label);
-        box->append(*data_label);
+        // box->append(*data_label);
         box->append(*is_default_button);
         box->append(*remove_btn);
         list_item->set_child(*box);
@@ -845,19 +874,21 @@ void DocumentProperties::build_cms()
         }
 
         auto name_label = dynamic_cast<Gtk::Label *>(box->get_first_child());
-        auto data_label = dynamic_cast<Gtk::Label *>(name_label->get_next_sibling());
-        auto is_default_button = dynamic_cast<Gtk::CheckButton *>(data_label->get_next_sibling());
+        // auto data_label = dynamic_cast<Gtk::Label *>(name_label->get_next_sibling());
+        auto is_default_button = dynamic_cast<Gtk::ToggleButton *>(name_label->get_next_sibling());
         auto remove_btn = dynamic_cast<Gtk::Button *>(box->get_last_child());
 
-        if (name_label && data_label && is_default_button && remove_btn) {
+        if (name_label /*&& data_label*/ && is_default_button && remove_btn) {
             auto name = item->name;
             name_label->set_text(name);
-            data_label->set_text(item->data_source);
+            // data_label->set_text(item->data_source);
             is_default_button->signal_toggled().connect([this,is_default_button,item](){
                 if(!is_default_button->get_active()){
                     item->is_default = false;
+                    is_default_button->set_label("Set Default");
                     return;
                 }
+                is_default_button->set_label("Default");
                 item->is_default = true;
                 // TODO : set this to be default colorprofile to the file
             });
