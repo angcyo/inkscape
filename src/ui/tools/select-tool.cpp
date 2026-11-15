@@ -904,14 +904,6 @@ bool SelectTool::root_handler(CanvasEvent const &event)
                     ret = true;
                     break;
 
-                case GDK_KEY_a:
-                case GDK_KEY_A:
-                    if (mod_ctrl_only(event)) {
-                        sp_edit_select_all(_desktop);
-                        ret = true;
-                    }
-                    break;
-
                 case GDK_KEY_space:
                 case GDK_KEY_c:
                 case GDK_KEY_C:
