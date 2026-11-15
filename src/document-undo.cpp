@@ -160,6 +160,7 @@ public:
 
 // 'key' is used to coalesce changes of the same type.
 // 'event_description' and 'icon_name' are used in the Undo History dialog.
+// 'temporary' is used for internal transactions, to not mark the document dirty.
 void Inkscape::DocumentUndo::maybeDoneInternal(SPDocument *doc, gchar const *key, ContextString event_description,
                                                Glib::ustring const &icon_name, unsigned int object_modified_tag,
                                                bool temporary)
@@ -217,7 +218,7 @@ void Inkscape::DocumentUndo::maybeDoneInternal(SPDocument *doc, gchar const *key
     }
 
     doc->virgin = FALSE;
-    doc->setModifiedSinceSave();
+    doc->setModifiedSinceSave(!temporary);
     sp_repr_begin_transaction (doc->rdoc);
     doc->commit_signal.emit();
 
