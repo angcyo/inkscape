@@ -26,6 +26,7 @@
 #include <gtkmm/dialog.h>
 #include <gtkmm/liststore.h>
 #include <gtkmm/spinbutton.h>
+#include <gtkmm/eventcontrollerkey.h>
 
 #include "colors/cms/profile.h"
 #include "colors/document-cms.h"
@@ -841,6 +842,7 @@ void DocumentProperties::build_cms()
     _LinkedProfileFactory->signal_setup().connect([this](Glib::RefPtr<Gtk::ListItem> const &list_item) {
         auto box = Gtk::make_managed<Gtk::Box>(Gtk::Orientation::HORIZONTAL,12);
         box->set_hexpand();
+        box->add_css_class("profile-row");
 
         auto name_label = Gtk::make_managed<Gtk::Label>();
         name_label->set_hexpand();
@@ -896,6 +898,48 @@ void DocumentProperties::build_cms()
         }
     });
 
+    auto keys = Gtk::EventControllerKey::create();
+    keys->set_propagation_phase(Gtk::PropagationPhase::CAPTURE);
+    keys->signal_key_pressed().connect([this](guint key ,guint, Gdk::ModifierType){
+        if (key != GDK_KEY_Left && key != GDK_KEY_Right)
+            return false;
+        
+        auto focused = _LinkedProfileListView->get_root()->get_focus();
+        if(!focused)
+            return false;
+        
+        Gtk::Widget* box = nullptr;
+        if (focused->has_css_class("profile-row"))
+            box = focused;
+        else if (auto p = focused->get_parent(); p&&p->has_css_class("profile-row"))
+            box = p;
+        else if (auto c = focused->get_first_child(); c&&c->has_css_class("profile-row"))
+            box = c;
+        
+        if (!box) return false;
+
+        std::vector<Gtk::Widget*>buttons;
+        for (auto w = box->get_first_child(); w; w = w->get_next_sibling())
+           if (w->get_focusable()) buttons.push_back(w);
+        
+        if(buttons.empty())
+            return false;
+
+        auto n = buttons.size();
+        auto it = std::find(buttons.begin(),buttons.end(),focused);
+        int index;
+        if(it == buttons.end())
+            index = (key == GDK_KEY_Right)?0:n-1;
+        else {
+            index = it - buttons.begin();
+            index = (key == GDK_KEY_Right) ? (index + 1) % n : (index - 1 + n) % n;
+        }
+        buttons[index]->grab_focus();
+        return true;
+
+    },false);
+
+    _LinkedProfileListView->add_controller(keys);
     _LinkedProfileListView->set_model(_LinkedSelectionModel);
     _LinkedProfileListView->set_factory(_LinkedProfileFactory);
 
