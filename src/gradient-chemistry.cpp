@@ -1744,10 +1744,7 @@ SPGradient *sp_document_default_gradient_vector(SPDocument *document, Colors::Co
 
     addStop(repr, color, opacity, "0");
     if (!singleStop) {
-        auto lightness = Colors::get_perceptual_lightness(color);
-        auto contrast = (lightness > 0.95 ? Colors::Color(0x00'00'00'ff) : Colors::Color(0xff'ff'ff'ff)).converted(color.getSpace());
-        // second stop without transparency - no more forcing users to fix alpha channel on new gradients
-        addStop(repr, /*contrast.value_or*/(color), 1.0, "1");
+        addStop(repr, color, 0, "1");
     }
 
     Inkscape::GC::release(repr);
