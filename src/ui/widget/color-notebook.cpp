@@ -168,13 +168,6 @@ void ColorNotebook::_initUI()
     gtk_box_append(rgbabox_box, _btn_picker);
     g_signal_connect(G_OBJECT(_btn_picker), "clicked", G_CALLBACK(ColorNotebook::_onPickerClicked), this);
 
-    auto const pick_under = Gtk::make_managed<Gtk::Button>();
-    pick_under->set_has_frame(false);
-    pick_under->set_action_name("app.chameleon-fill");
-    pick_under->set_icon_name("color-picker-chameleon");
-    pick_under->set_tooltip_text(_("Chameleon Fill"));
-    gtk_box_append(rgbabox_box, GTK_WIDGET(pick_under->gobj()));
-
     /* Create RGB entry and color preview */
     _rgbal = gtk_label_new_with_mnemonic(_("RGB"));
     gtk_widget_set_halign(_rgbal, GTK_ALIGN_END);
