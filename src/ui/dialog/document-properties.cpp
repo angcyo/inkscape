@@ -27,6 +27,7 @@
 #include <gtkmm/liststore.h>
 #include <gtkmm/spinbutton.h>
 #include <gtkmm/eventcontrollerkey.h>
+#include <gtkmm/eventcontrollermotion.h>
 
 #include "colors/cms/profile.h"
 #include "colors/document-cms.h"
@@ -853,7 +854,22 @@ void DocumentProperties::build_cms()
         // auto data_label = Gtk::make_managed<Gtk::Label>();
         auto is_default_button = Gtk::make_managed<Gtk::ToggleButton>();
         is_default_button->set_group(this->_DefaultGroup);
-        is_default_button->set_label("Set Default");
+
+        auto motion = Gtk::EventControllerMotion::create();
+        motion->signal_enter().connect([is_default_button](double x, double y) {
+            if (!is_default_button->get_active()) {
+                is_default_button->set_opacity(100);
+                docprops_style_button(*is_default_button, INKSCAPE_ICON("file-arrow-right"));
+            }
+        });
+
+        motion->signal_leave().connect([is_default_button]() {
+            if(!is_default_button->get_active())
+                is_default_button->set_opacity(0);
+        });
+
+        is_default_button->add_controller(motion);
+
         auto remove_btn = Gtk::make_managed<Gtk::Button>();
         remove_btn->set_tooltip_text(_("Unlink Profile"));
         docprops_style_button(*remove_btn, INKSCAPE_ICON("list-remove"));
@@ -883,14 +899,16 @@ void DocumentProperties::build_cms()
         if (name_label /*&& data_label*/ && is_default_button && remove_btn) {
             auto name = item->name;
             name_label->set_text(name);
+            is_default_button->set_opacity(0);
             // data_label->set_text(item->data_source);
             is_default_button->signal_toggled().connect([this,is_default_button,item](){
                 if(!is_default_button->get_active()){
                     item->is_default = false;
-                    is_default_button->set_label("Set Default");
+                    is_default_button->set_opacity(0);
                     return;
                 }
-                is_default_button->set_label("Default");
+                is_default_button->set_opacity(100);
+                docprops_style_button(*is_default_button, INKSCAPE_ICON("file"));
                 item->is_default = true;
                 // TODO : set this to be default colorprofile to the file
             });
