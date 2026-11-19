@@ -1331,6 +1331,13 @@ SPDesktop::getCurrentOrToolStyle(Glib::ustring const &tool_path, bool with_text,
         else {
             Inkscape::Preferences *prefs = Inkscape::Preferences::get();
             auto *css_new = prefs->getStyle(Glib::ustring("/desktop/") + *use_current + "/style"); // getStyle never returns nullptr
+
+            if (sp_repr_css_property(css_new, "font-family",             Glib::ustring("Missing")) != "Missing" &&
+                sp_repr_css_property(css_new, "font-variation-settings", Glib::ustring("Missing")) == "Missing") {
+                // Unset font-variations-settings so we don't pick up font-variations from a different font face.
+                sp_repr_css_unset_property(css, "font-variation-settings");
+            }
+
             sp_repr_css_merge(css, css_new);
             sp_repr_css_attr_unref(css_new);
         }

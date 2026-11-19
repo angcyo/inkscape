@@ -25,21 +25,20 @@ namespace Inkscape {
 // -----------  fontspec ----------
 
 // fontspec is essentially what Pango::FontDescription::to_string() returns.
-// But the following functions do not use Pango::FontDescription.
 
-// Construct a fontspec from component strings. TEST
+// Construct a fontspec from component strings.
 Glib::ustring get_fontspec(const Glib::ustring& family, const Glib::ustring& face, const Glib::ustring& variations);
 
 // Construct a fontspec from component strings (without variations). TEST
 Glib::ustring get_fontspec(const Glib::ustring& family, const Glib::ustring& face);
 
+// Construct a fontspec from Pango variables. Empty string if no font family. TEST
+Glib::ustring get_fontspec(const Glib::RefPtr<Pango::FontFamily>& ff, const Glib::RefPtr<Pango::FontFace>& face, const Glib::ustring& variations);
+
 // Remove variatins from fontspec. TEST
 Glib::ustring get_fontspec_without_variants(const Glib::ustring& fontspec);
 
-// Construct a fontspec from Pango variables. Empty string if no font family. TEST
-Glib::ustring get_inkscape_fontspec(const Glib::RefPtr<Pango::FontFamily>& ff, const Glib::RefPtr<Pango::FontFace>& face, const Glib::ustring& variations);
-
-// Pass fontspec to and back from Pango to get the fontspec in canonical form. TEST
+// Pass fontspec to and back from Pango to get the fontspec in canonical form.
 Glib::ustring canonize_fontspec(Glib::ustring const &fontspec);
 
 
@@ -60,7 +59,10 @@ Glib::ustring get_face_style(const Pango::FontDescription& desc);
 // Differs from get_fontspec() only in that there is no comma between family and face.
 Glib::ustring get_full_font_name(Glib::RefPtr<Pango::FontFamily> ff, Glib::RefPtr<Pango::FontFace> face);
 
-// Returns a map of 'tag' => 'value' from a variations string. TEST
+// Get file paths for face source.
+std::vector<std::string> get_font_files(Glib::RefPtr<Pango::FontFace> face);
+
+// Returns a map of 'tag' => 'value' from a variations string.
 std::map<std::string, std::string> parse_variations(const char* variations);
 
 } // namespace Inkscape

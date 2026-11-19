@@ -37,7 +37,7 @@ Glib::ustring get_font_icon(FontInfo const &font, bool missing_font = false)
 
 Glib::ustring get_alt_name(Glib::ustring const &fontspec)
 {
-    static Glib::ustring sans = "sans-serif";
+    static Glib::ustring sans = "Sans"; // Use Pango name for default
     if (fontspec.find(sans) != Glib::ustring::npos) {
         auto end = fontspec[sans.size()];
         if (end == 0 || end == ' ' || end == ',') {
@@ -59,25 +59,25 @@ class FontElement : public Glib::Object
     } _type;
 
 public:
-    static Glib::RefPtr<FontElement> create_font(FontInfo const &font)
+    static Glib::RefPtr<FontElement> create_font(FontInfo const &fontinfo)
     {
-        return Glib::make_refptr_for_instance<FontElement>(new FontElement({}, font, {}, Type::Font));
+        return Glib::make_refptr_for_instance<FontElement>(new FontElement({}, fontinfo, {}, Type::Font));
     }
 
-    static Glib::RefPtr<FontElement> create_style(FontInfo const &font)
+    static Glib::RefPtr<FontElement> create_style(FontInfo const &fontinfo)
     {
-        return Glib::make_refptr_for_instance<FontElement>(new FontElement({}, font, {}, Type::Style));
+        return Glib::make_refptr_for_instance<FontElement>(new FontElement({}, fontinfo, {}, Type::Style));
     }
 
-    static Glib::RefPtr<FontElement> create_family(FontInfo const &font, std::vector<FontInfo> family)
+    static Glib::RefPtr<FontElement> create_family(FontInfo const &fontinfo, std::vector<FontInfo> family)
     {
-        return Glib::make_refptr_for_instance<FontElement>(new FontElement(std::move(family), font, {}, Type::Family));
+        return Glib::make_refptr_for_instance<FontElement>(new FontElement(std::move(family), fontinfo, {}, Type::Family));
     }
 
-    static Glib::RefPtr<FontElement> create_injected_font(FontInfo const &font, Glib::ustring alt_spec, bool is_missing)
+    static Glib::RefPtr<FontElement> create_injected_font(FontInfo const &fontinfo, Glib::ustring alt_spec, bool is_missing)
     {
         auto element =
-            Glib::make_refptr_for_instance<FontElement>(new FontElement({}, font, std::move(alt_spec), Type::Font));
+            Glib::make_refptr_for_instance<FontElement>(new FontElement({}, fontinfo, std::move(alt_spec), Type::Font));
         element->_missing_font = is_missing;
         element->_injected = true;
         return element;
@@ -90,24 +90,24 @@ public:
         return element;
     }
 
-    Glib::ustring icon_name() const { return get_font_icon(_font, _missing_font); } // Defined in ui/widget/font-list.cpp
+    Glib::ustring icon_name() const { return get_font_icon(_fontinfo, _missing_font); } // Defined in ui/widget/font-list.cpp
     Glib::ustring icon_tooltip() const
     {
         if (_missing_font) {
             // this font is not installed / not available
             return _("This font is missing");
-        } else if (_font.synthetic) {
+        } else if (_fontinfo.synthetic) {
             // this is an alias for some fallback font (ex: 'Serif', 'Sans') and/or faux style
             return _("This is an alias or synthetic font");
         }
         return {};
     }
-    FontInfo const &font() const { return _font; }
+    FontInfo const &font() const { return _fontinfo; }
     Glib::ustring const &get_alt_spec() const { return _alt_fontspec; }
     bool is_present() const
     {
         // true if this font is installed
-        return _font.ff != nullptr;
+        return _fontinfo.ff != nullptr;
     }
     bool is_family() const { return _type == Type::Family; }
     bool is_injected() const { return _injected; }
@@ -153,7 +153,7 @@ public:
 
         auto &alt = _alt_fontspec;
         auto font_desc =
-            Glib::Markup::escape_text(is_present() ? Inkscape::get_font_description(_font.ff, _font.face).to_string()
+            Glib::Markup::escape_text(is_present() ? _fontinfo.fontspec
                                                    : (alt.empty() ? "sans-serif" : alt));
         auto alpha = _missing_font ? "60%" : "100%";
         return Glib::ustring::format("<span allow_breaks='false' alpha='", alpha, "' size='", font_size_percent,
@@ -162,7 +162,7 @@ public:
 
 private:
     FontElement(std::vector<FontInfo> family, FontInfo font, Glib::ustring alt, Type type)
-        : _font(std::move(font))
+        : _fontinfo(std::move(font))
         , _family(std::move(family))
         , _type(type)
         , _alt_fontspec(std::move(alt))
@@ -177,17 +177,17 @@ private:
         switch (type) {
             case Type::Font:
                 // full font name: family + style
-                name = Glib::Markup::escape_text(present ? Inkscape::get_full_font_name(_font.ff, _font.face)
+                name = Glib::Markup::escape_text(present ? Inkscape::get_full_font_name(_fontinfo.ff, _fontinfo.face)
                                                          : get_alt_name(_alt_fontspec));
                 break;
             case Type::Family:
                 // font family name only
-                name = Glib::Markup::escape_text(present ? Inkscape::get_full_font_name(_font.ff, empty)
+                name = Glib::Markup::escape_text(present ? Inkscape::get_full_font_name(_fontinfo.ff, empty)
                                                          : get_alt_name(_alt_fontspec));
                 break;
             case Type::Style:
                 // font style only
-                name = Glib::Markup::escape_text(_font.face->get_name());
+                name = Glib::Markup::escape_text(_fontinfo.face->get_name());
                 break;
             default:
                 assert(false);
@@ -196,7 +196,7 @@ private:
         return name;
     }
 
-    FontInfo _font;
+    FontInfo _fontinfo;
     std::vector<FontInfo> _family;
     // empty element to keep space in a store
     bool _placeholder = false;

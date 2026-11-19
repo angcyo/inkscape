@@ -341,7 +341,12 @@ void FontInstance::find_font_metrics()
         // x-height: If not set in font, position of top of 'x' relative to alphabetic baseline.
         hb_position_t xheight_int = -999; // Dummy number, HB will fill.
         hb_ot_metrics_get_position_with_fallback(hb_font, HB_OT_METRICS_TAG_X_HEIGHT, &xheight_int);
-        double _xheight = xheight_int / (double)y_scale;
+        _xheight = xheight_int / (double)y_scale;
+
+        hb_position_t capheight_int = -999; // Dummy number, HB will fill.
+        hb_ot_metrics_get_position_with_fallback(hb_font, HB_OT_METRICS_TAG_CAP_HEIGHT, &capheight_int);
+        _capheight = capheight_int / (double)y_scale;
+
 
         // TO DO: Harfbuzz has better code to do this. (hb-ot-layout.cc)
         // Baselines defined relative to  alphabetic.

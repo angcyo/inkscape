@@ -181,11 +181,6 @@ Glib::ustring FontFactory::GetUIStyleString(PangoFontDescription const *fontDesc
         style = fontDescrAsString;
         g_free(fontDescrAsString);
 
-        // Unsetting family causes "Normal" to be returned if all other values are default.
-        if (style == "Normal") {
-            style == "";
-        }
-
         pango_font_description_free(fontDescrCopy);
     }
 
@@ -301,48 +296,30 @@ std::vector<StyleNames> FontFactory::GetUIStyles(const Glib::RefPtr<Pango::FontF
 
     for (int currentFace = 0; currentFace < numFaces; currentFace++) {
 
+        PangoFontFace* face = faces[currentFace];
+
         // If the face has a name, describe it, and then use the
         // description to get the UI family and face strings
-        char const *displayName = pango_font_face_get_face_name(faces[currentFace]);
+        char const *displayName = pango_font_face_get_face_name(face);
         if (!displayName || *displayName == '\0') {
             std::cerr << "FontFactory::GetUIStyles: Missing displayName! " << std::endl;
             continue;
         }
 
-        PangoFontDescription *faceDescr = pango_font_face_describe(faces[currentFace]);
+        PangoFontDescription *faceDescr = pango_font_face_describe(face);
 
         if (faceDescr) {
 
-            // pango_font_face_describe() does not include font variations. We need to add them
-            // ourselves!!  pango_font_family_is_variable() uses the FontConfig FC_VARIABLE bool
-            // but this only seems to be set true if the fonts 'fvar' table has variable weight,
-            // width (stretch), or optical size.  Thus Decovar is NOT marked as a variable font!!!
-            //
-            // The following is very wasteful but is necessary. We can't just load the font once since
-            // the faces may not be in one file. For example, Amestelvar has two different files, one
-            // for roman and another for italic variations.
-            auto pango_font = pango_font_map_load_font(fontServer, fontContext, faceDescr);
-            if (pango_font) {
-                auto hb_font = pango_font_get_hb_font(pango_font); // Pango owns hb_font
-                if (hb_font) {
-                    std::map<Glib::ustring, Glib::ustring> openTypeVarNames;
-                    readOpenTypeFvarNamedInstances(hb_font, openTypeVarNames);
-                    if (openTypeVarNames.find(displayName) != openTypeVarNames.end()) {
-                        pango_font_description_set_variations(faceDescr, openTypeVarNames[displayName].c_str());
-                    }
-                } else {
-                    std::cerr << "FontFactory::GetUIStyles: failed to load hb_font!" << std::endl;
-                }
-                g_object_unref(pango_font);
-            } else {
-                std::cerr << "FontFactory::GetUIStyles: failed to load pango_font!" << std::endl;
-            }
+            // pango_font_face_describe() does not include font variations.
+            // We need to add them ourselves!!
+            auto variations_string = get_variations_string(face);
+            pango_font_description_set_variations(faceDescr, variations_string.c_str());
 
             Glib::ustring familyUIName = GetUIFamilyString(faceDescr);
             Glib::ustring styleUIName = GetUIStyleString(faceDescr);
 
             // Disable synthesized (faux) font faces except for CSS generic faces
-            if (pango_font_face_is_synthesized(faces[currentFace]) ) {
+            if (pango_font_face_is_synthesized(face) ) {
                 if (familyUIName.compare("sans-serif") != 0 &&
                     familyUIName.compare("serif"     ) != 0 &&
                     familyUIName.compare("monospace" ) != 0 &&
@@ -355,12 +332,14 @@ std::vector<StyleNames> FontFactory::GetUIStyles(const Glib::RefPtr<Pango::FontF
 
             styleUIName = Inkscape::canonize_fontspec(styleUIName);
 
+            // auto string = pango_font_description_to_string(faceDescr);
             // std::cout << "  Display Name: "   << std::setw(20) << displayName
             //           << "  familyUIName: " << std::setw(20) << familyUIName
             //           << "  styleUIName: "  << std::setw(30) << styleUIName
-            //           << "  (" << pango_font_description_to_string(faceDescr) << ")"
-            //           << "  Variable: " << std::boolalpha << (bool)pango_font_family_is_variable(in)
+            //           << "  (" << string << ")"
+            //           << "  Variable: " << std::boolalpha << !variations_string.empty()
             //           << std::endl;
+            // g_free(string);
 
             // NOTE: CSS no longer limits weights to multiple of 100.
             // As of Pango 1.23.0, "weight=450" is valid font description syntax.
@@ -407,6 +386,47 @@ std::vector<StyleNames> FontFactory::GetUIStyles(const Glib::RefPtr<Pango::FontF
     // std::cout << "FontFactory::GetUIStyles: Exit" << std::endl;
 
     return result;
+}
+
+// Pango::FontFace::describe() does not include font variations. We need to add them
+// ourselves!!  pango_font_family_is_variable() uses the FontConfig FC_VARIABLE bool
+// but this only seems to be set true if the fonts 'fvar' table has variable weight,
+// width (stretch), or optical size.  Thus Decovar is NOT marked as a variable font!!!
+//
+// The following is very wasteful but is necessary. We can't just load the font once since
+// the faces may not be in one file. For example, Amestelvar has two different files, one
+// for roman and another for italic variations.
+std::string
+FontFactory::get_variations_string(const Glib::RefPtr<Pango::FontFace> &face) {
+    return get_variations_string(face->gobj());
+}
+
+std::string
+FontFactory::get_variations_string(const PangoFontFace* face) {
+
+    std::string variations_string;
+
+    auto descr = pango_font_face_describe(const_cast<PangoFontFace*>(face));
+    auto pango_font = pango_font_map_load_font(fontServer, fontContext, descr);
+    if (pango_font) {
+        auto hb_font = pango_font_get_hb_font(pango_font); // Pango owns hb_font.
+        if (hb_font) {
+            std::map<Glib::ustring, Glib::ustring> openTypeVarNames;
+            readOpenTypeFvarNamedInstances(hb_font, openTypeVarNames);
+            auto displayName = pango_font_face_get_face_name(const_cast<PangoFontFace*>(face));
+            if (openTypeVarNames.find(displayName) != openTypeVarNames.end()) {
+                variations_string = openTypeVarNames[displayName];
+            }
+        } else {
+            std::cerr << "FontFactory::get_variations_string: failed to load hb_font!" << std::endl;
+        }
+        g_object_unref(pango_font);
+    } else {
+        std::cerr << "FontFactory::get_variations_string: failed to load pango_font!" << std::endl;
+    }
+    pango_font_description_free(descr);
+
+    return variations_string;
 }
 
 std::shared_ptr<FontInstance> FontFactory::FaceFromDescr(char const *family, char const *style)

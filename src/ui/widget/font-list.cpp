@@ -322,8 +322,8 @@ Glib::RefPtr<Gio::ListStore<FontElement>> create_element_model(Glib::RefPtr<Glib
     }
 
     auto result = Gio::ListStore<FontElement>::create();
-    for (auto &f : element->family()) {
-        result->append(FontElement::create_style(f));
+    for (auto &fontinfo : element->family()) {
+        result->append(FontElement::create_style(fontinfo));
     }
 
     // no visible children?
@@ -745,11 +745,7 @@ FontList::FontList(Glib::ustring preferences_path)
             return;
 
         auto scoped = _update.block();
-        auto vars = font.variations;
-        if (vars.empty() && font.variable_font) {
-            vars = get_inkscape_fontspec(font.ff, font.face, font.variations);
-        }
-        _font_variations.update(vars);
+        _font_variations.update(font.fontspec);
         _var_axes.set_visible(_font_variations.variations_present());
         _signal_fontspec_changed.emit();
     };
@@ -921,7 +917,7 @@ int FontList::find_font(Glib::ustring const &fontspec, int from, int count) cons
 
         if (element->is_present()) {
             auto &font = element->font();
-            auto spec = get_inkscape_fontspec(font.ff, font.face, font.variations);
+            auto spec = font.fontspec;
             if (spec == fontspec) {
                 return i;
             }
@@ -980,29 +976,21 @@ bool FontList::select_font(Glib::ustring const &fontspec)
         // if some fonts in a tree are collapsed, their leaves are not visible to the selection model;
         // we need to check all styles too:
 
-        int pos = -1;
-        for (auto &&fam : _font_families) {
-            for (auto &font : fam) {
-                auto spec = get_inkscape_fontspec(font.ff, font.face, font.variations);
-                if (spec == fontspec) {
-                    // find "family" node in the tree
-                    auto &regular = get_family_font(fam);
-                    spec = get_inkscape_fontspec(regular.ff, regular.face, regular.variations);
-                    pos = find_font(spec);
-                    break;
+        auto descr = Pango::FontDescription(fontspec);
+        auto descr_family = descr.get_family();
+
+        // Find position
+        pos = find_font(descr_family);
+        if (pos >= 0) {
+            if (auto row = std::dynamic_pointer_cast<Gtk::TreeListRow>(_list_selection->get_object(pos))) {
+                // expand family row to populate styles
+                row->set_expanded();
+                auto children = row->get_children();
+                pos = find_font(fontspec, pos, pos + 1 + children->get_n_items());
+                if (pos >= 0) {
+                    found = true;
+                    scroll_to_row(pos);
                 }
-            }
-            if (pos >= 0) {
-                if (auto row = std::dynamic_pointer_cast<Gtk::TreeListRow>(_list_selection->get_object(pos))) {
-                    // expand family row to populate styles
-                    row->set_expanded();
-                    pos = find_font(fontspec, pos, pos + 1 + fam.size());
-                    if (pos >= 0) {
-                        found = true;
-                        scroll_to_row(pos);
-                    }
-                }
-                break;
             }
         }
     }
@@ -1202,15 +1190,15 @@ Glib::ustring FontList::get_fontspec() const
     if (auto element = std::dynamic_pointer_cast<FontElement>(get_selected_font())) {
         auto &font = element->font();
         if (font.ff) {
-            auto variations = _font_variations.get_pango_string(true);
-            return Inkscape::get_inkscape_fontspec(font.ff, font.face, variations);
+            auto variations = _font_variations.get_pango_string(false);
+            return Inkscape::get_fontspec(font.ff, font.face, variations);
         } else {
             // missing fonts don't have known variation that we could tweak,
             // so ignore _font_variations UI and simply return alt_fontspec
             return element->get_alt_spec();
         }
     }
-    return "sans-serif"; // no selection
+    return "Sans"; // no selection. Use Pango default
 }
 
 void FontList::set_current_font(Glib::ustring const &family, Glib::ustring const &face)
@@ -1250,27 +1238,16 @@ void FontList::add_font(Glib::ustring const &fontspec, bool select)
 {
     auto scoped = _update.block();
 
-    bool found = select_font(fontspec); // found in the tree view?
-    if (found)
+    // Is it in the treeview?
+    bool found = select_font(fontspec);
+    if (found) {
+        std::cerr << "FontList::add_font: duplicate fontspec found: " << fontspec << std::endl;
         return;
-
-    auto it = std::ranges::find_if(
-        _fonts, [&](FontInfo const &f) { return get_inkscape_fontspec(f.ff, f.face, f.variations) == fontspec; });
-
-    // fonts with variations will not be found, we need to remove " @ axis=value" part
-    auto fspec = get_fontspec_without_variants(fontspec);
-    // auto at = fontspec.rfind('@');
-    if (it == end(_fonts) && fspec != fontspec) {
-        // try to match existing font
-        it = std::find_if(begin(_fonts), end(_fonts), [&](FontInfo const &f) {
-            return get_inkscape_fontspec(f.ff, f.face, f.variations) == fspec;
-        });
-        if (it != end(_fonts)) {
-            bool found = select_font(fspec); // found in the tree view?
-            if (found)
-                return;
-        }
     }
+
+    // Is it on the system?
+    auto it = std::ranges::find_if(
+        _fonts, [&](FontInfo const &f) { return f.fontspec == fontspec; });
 
     Glib::RefPtr<FontElement> insert;
 
@@ -1282,18 +1259,18 @@ void FontList::add_font(Glib::ustring const &fontspec, bool select)
         bool missing_font = true;
         FontInfo subst;
 
+        // Check if font is a variable font. We may have a variable font with values that have
+        // been converted to CSS values that leave the variations field blank ('wght=700' -> 'bold').
         auto desc = Pango::FontDescription(fontspec);
-        auto vars = desc.get_variations();
-        if (!vars.empty()) {
-            // font with variations; check if we have matching family
-            subst.variations = vars;
-
-            auto family = desc.get_family();
-            it = std::ranges::find_if(_fonts, [&](FontInfo const &f) { return f.ff->get_name() == family; });
-            if (it != end(_fonts)) {
-                missing_font = false;
-                subst.ff = it->ff;
-            }
+        auto family = desc.get_family();
+        it = std::ranges::find_if(_fonts, [&](FontInfo const &f) {
+            return (f.ff ? f.ff->get_name() == family : false);
+        });
+        if (it != end(_fonts)) {
+            missing_font = false;
+            subst.ff = it->ff;
+            subst.variable_font = it->variable_font;
+            subst.variations = desc.get_variations();
         }
 
         // set "missing" font entry
@@ -1483,3 +1460,14 @@ void FontList::on_map()
 }
 
 } // namespace Inkscape::UI::Widget
+
+/*
+  Local Variables:
+  mode:c++
+  c-file-style:"stroustrup"
+  c-file-offsets:((innamespace . 0)(inline-open . 0)(case-label . +))
+  indent-tabs-mode:nil
+  fill-column:99
+  End:
+*/
+// vim: filetype=cpp:expandtab:shiftwidth=4:tabstop=8:softtabstop=4:fileencoding=utf-8:textwidth=99 :

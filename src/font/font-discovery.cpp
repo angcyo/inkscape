@@ -33,6 +33,8 @@
 #include "async/progress.h"
 #include "font/font-utils.h"
 #include "io/resource.h"
+
+// Used to find out if font is fixed width, oblique, etc.
 #include "libnrtype/font-factory.h"
 #include "libnrtype/font-instance.h"
 
@@ -43,7 +45,9 @@ namespace Inkscape {
 // Attempt to estimate how heavy given typeface is by drawing some capital letters and counting
 // black pixels (alpha channel). This is imperfect, but reasonable proxy for font weight, as long
 // as Pango can instantiate correct font.
-double calculate_font_weight(Pango::FontDescription& desc, double caps_height) {
+double calculate_font_weight(const Pango::FontDescription& desc_in, double caps_height) {
+    auto desc = desc_in;
+
     // pixmap with enough room for a few characters; the rest will be cropped
     auto surface = Cairo::ImageSurface::create(Cairo::Surface::Format::ARGB32, 128, 64);
     auto context = Cairo::Context::create(surface);
@@ -76,7 +80,8 @@ double calculate_font_weight(Pango::FontDescription& desc, double caps_height) {
 }
 
 // calculate width of a A-Z string to try to measure average character width
-double calculate_font_width(Pango::FontDescription& desc) {
+double calculate_font_width(const Pango::FontDescription& desc_in) {
+    auto desc = desc_in;
     auto surface = Cairo::ImageSurface::create(Cairo::Surface::Format::ARGB32, 1, 1);
     auto context = Cairo::Context::create(surface);
     auto layout = Pango::Layout::create(context);
@@ -209,8 +214,7 @@ void save_font_cache(const std::vector<std::vector<FontInfo>>& fonts) {
 
     for (auto&& family : fonts) {
         for (auto&& font : family) {
-            auto desc = get_font_description(font.ff, font.face);
-            auto group = desc.to_string();
+            auto group = font.fontspec;
             int flags = FontCacheFlags::Normal;
             if (font.monospaced) {
                 flags |= FontCacheFlags::Monospace;
@@ -326,17 +330,29 @@ std::shared_ptr<const std::vector<std::vector<FontInfo>>> get_all_fonts(Async::P
 
             auto desc = face->describe();
             desc.unset_fields(Pango::FontMask::SIZE);
-            std::string key = desc.to_string();
-            if (styles.count(key)) continue;
+            auto variations = FontFactory::get().get_variations_string(face);
+            desc.set_variations(variations);
+            Glib::ustring fontspec = desc.to_string();
+            fontspec = canonize_fontspec(fontspec);
+            if (styles.count(fontspec)) {
+                // This happens when:
+                // - A user has both a variable font and the corresponding non-variable fonts installed.
+                // - Multiple versions of the same font are installed differing by font-size.
+                // - A font is divided into multiple files (e.g. HanaMin which has too many code points).
+                // std::cerr << "get_all_fonts: duplicate fontspec! " << fontspec << std::endl;
+                // for (auto file : get_font_files(face)) {
+                //     std::cerr << "  " << file << std::endl;
+                // }
+                continue;
+            }
 
-            styles.insert(key);
+            styles.insert(fontspec);
 
-            FontInfo info = { ff, face };
+            FontInfo info = { ff, face, variations, fontspec };
             info.synthetic = synthetic_font;
             bool valid = false;
 
-            desc = get_font_description(ff, face);
-            auto it = cache.find(desc.to_string().raw());
+            auto it = cache.find(fontspec.raw());
             if (it == cache.end()) {
                 // font not found in a cache; calculate metrics
 
@@ -347,7 +363,7 @@ std::shared_ptr<const std::vector<std::vector<FontInfo>>> get_all_fonts(Async::P
                 try {
                     auto font = FontFactory::get().create_face(desc.gobj());
                     if (!font) {
-                        g_warning("Cannot load font %s", key.c_str());
+                        g_warning("Cannot load font %s", fontspec.c_str());
                     }
                     else {
                         valid = true;
@@ -355,20 +371,13 @@ std::shared_ptr<const std::vector<std::vector<FontInfo>>> get_all_fonts(Async::P
                         info.oblique = font->is_oblique();
                         info.family_kind = font->family_class();
                         info.variable_font = !font->get_opentype_varaxes().empty();
-                        auto glyph = font->LoadGlyph(font->MapUnicodeChar('E'));
-                        if (glyph) {
-                            // caps height normalized to 0..1
-                            caps_height = glyph->bbox_exact.height();
-                        }
+                        caps_height = font->GetCapHeight();
                     }
                 }
                 catch (...) {
-                    g_warning("Error loading font %s", key.c_str());
+                    g_warning("Error loading font %s", fontspec.c_str());
                 }
-                desc = get_font_description(ff, face);
                 info.weight = calculate_font_weight(desc, caps_height);
-
-                desc = get_font_description(ff, face);
                 info.width = calculate_font_width(desc);
             }
             else {
@@ -378,10 +387,20 @@ std::shared_ptr<const std::vector<std::vector<FontInfo>>> get_all_fonts(Async::P
             }
 
             if (valid) {
+                // If we got cached info, we need to save these details, since it's not in the FontInfo filled by the cache.
                 info.ff = ff;
                 info.face = face;
+                info.variations = variations;
+                info.fontspec = fontspec;
+
                 family.emplace_back(info);
             }
+            // std::cout << "get_all_fonts: FontInfo: "
+            //           << " family: "     << std::setw(20) << info.ff->get_name()
+            //           << " face: "       << std::setw(15) << info.face->get_name()
+            //           << " variations: " << std::setw(10) << info.variations
+            //           << " fontspec: "   << info.fontspec
+            //           << std::endl;
         }
         if (!family.empty()) {
             fonts.push_back(family);
