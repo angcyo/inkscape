@@ -3,7 +3,6 @@
 set(libnrtype_unit_SRC
 	font-factory.cpp
 	font-instance.cpp
-	font-utils.cpp
 	OpenTypeUtil.cpp
     
 	# -------
@@ -11,7 +10,6 @@ set(libnrtype_unit_SRC
 	font-factory.h
 	font-glyph.h
 	font-instance.h
-	font-utils.h
 	OpenTypeUtil.h
 )
 

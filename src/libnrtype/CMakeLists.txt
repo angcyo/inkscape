@@ -2,7 +2,6 @@
 
 set(libnrtype_SRC
         font-lister.cpp
-        font-utils.cpp
 	Layout-TNG.cpp
 	Layout-TNG-Compute.cpp
 	Layout-TNG-Input.cpp
@@ -14,7 +13,6 @@ set(libnrtype_SRC
 	# -------
 	# Headers
 	font-lister.h
-        font-utils.h
 	Layout-TNG-Scanline-Maker.h
 	Layout-TNG.h
 	style-attachments.h

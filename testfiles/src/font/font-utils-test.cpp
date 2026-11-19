@@ -7,7 +7,7 @@
  * Released under GNU GPL v2+, read the file 'COPYING' for more information.
  */
 
-#include "libnrtype/font-utils.h"
+#include "font/font-utils.h"
 #include <gtest/gtest.h>
 #include "../test-utils.h"
 

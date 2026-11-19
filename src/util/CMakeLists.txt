@@ -7,7 +7,6 @@ target_sources(inkscape_base PRIVATE
     expression-evaluator.cpp
     font-collections.cpp
     format_size.cpp
-    font-discovery.cpp
     font-tags.cpp
     funclog.cpp
     glyph-draw.cpp
@@ -46,7 +45,6 @@ target_sources(inkscape_base PRIVATE
     expression-evaluator.h
     font-collections.h
     fixed_point.h
-    font-discovery.h
     font-tags.h
     format.h
     format_size.h

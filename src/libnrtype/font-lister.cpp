@@ -33,7 +33,7 @@
 #include "preferences.h"
 #include "style-text.h"
 #include "libnrtype/font-instance.h"
-#include "libnrtype/font-utils.h"
+#include "font/font-utils.h"
 #include "object/sp-object.h"
 // Following are needed to limit the source of updating font data to text and containers.
 #include "object/sp-root.h"

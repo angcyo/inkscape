@@ -16,13 +16,44 @@
 
 namespace Inkscape {
 
+Glib::ustring get_fontspec(const Glib::ustring& family, const Glib::ustring& face, const Glib::ustring& variations) {
+    if (variations.empty()) {
+        return face.empty() ? family : family + ", " + face;
+    }
+    else {
+        auto desc = (face.empty() ? family : family + ", " + face) + " " + variations;
+        return desc;
+    }
+}
+
+Glib::ustring get_fontspec(const Glib::ustring& family, const Glib::ustring& face) {
+    return get_fontspec(family, face, Glib::ustring());
+}
+
+Glib::ustring get_fontspec_without_variants(const Glib::ustring& fontspec) {
+    auto at = fontspec.rfind('@');
+    if (at != Glib::ustring::npos && at > 0) {
+        // remove variations
+        while (at > 0 && fontspec[at - 1] == ' ') at--; // trim spaces
+
+        return fontspec.substr(0, at);
+    }
+    return fontspec;
+}
+
+Glib::ustring get_inkscape_fontspec(const Glib::RefPtr<Pango::FontFamily>& ff, const Glib::RefPtr<Pango::FontFace>& face, const Glib::ustring& variations) {
+    if (!ff) return Glib::ustring();
+
+    return get_fontspec(ff->get_name(), face ? get_face_style(face->describe()) : Glib::ustring(), variations);
+}
+
 // Pass fontspec to and back from Pango to get a the fontspec in canonical form. TEST
 Glib::ustring canonize_fontspec(Glib::ustring const &fontspec)
 {
     PangoFontDescription *descr = pango_font_description_from_string(fontspec.c_str());
 
     // CSS Font Module Level 4 dictates that "font-weight", "font-width' ("font-stretch"),
-    // "font-style", and "font-optical-sizing" shoud be used rather than the
+    // "font-style", and "font-optical-sizing" should be used rather than the
     // "font-variation-settings" axes 'wght', 'wdth', 'slnt'/'ital', or 'opsz'.
     // At the moment (May 2026), Pango only provides adequate support for doing so for
     // font weight.
@@ -73,6 +104,34 @@ Glib::ustring canonize_fontspec(Glib::ustring const &fontspec)
     return Canonized;
 }
 
+
+Pango::FontDescription get_font_description(const Glib::RefPtr<Pango::FontFamily>& ff, const Glib::RefPtr<Pango::FontFace>& face) {
+    if (!face) return Pango::FontDescription("sans serif");
+
+    auto desc = face->describe();
+    desc.unset_fields(Pango::FontMask::SIZE);
+    return desc;
+}
+
+Glib::ustring get_face_style(const Pango::FontDescription& desc) {
+    Pango::FontDescription copy(desc);
+    copy.unset_fields(Pango::FontMask::FAMILY);
+    copy.unset_fields(Pango::FontMask::SIZE);
+    auto str = copy.to_string();
+    return str;
+}
+
+
+// Construct font name from Pango face and family as recorded in font, as far as Pango allows it.
+// This differs from get_fontspec() only in that there is no comma between family and face.
+Glib::ustring get_full_font_name(Glib::RefPtr<Pango::FontFamily> ff, Glib::RefPtr<Pango::FontFace> face) {
+    if (!ff) return "";
+
+    auto family = ff->get_name();
+    auto face_name = face ? face->get_name() : Glib::ustring();
+    auto name = face_name.empty() ? family : family + ' ' + face_name;
+    return name;
+}
 
 // Returns a map of 'tag' => 'value' from a variations string. TEST
 std::map<std::string, std::string> parse_variations(const char* variations)

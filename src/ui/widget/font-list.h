@@ -26,9 +26,9 @@
 #include "font-size-selector.h"
 #include "generic/number-combo-box.h"
 #include "generic/popover-menu.h"
+#include "font/font-info.h"
 #include "ui/text_filter.h"
 #include "ui/widget/font-variations.h"
-#include "util/font-discovery.h"
 #include "util/font-tags.h"
 
 namespace Inkscape::UI::Widget {

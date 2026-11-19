@@ -9,29 +9,32 @@
  */
 
 #include "font-discovery.h"
-#include "async/progress.h"
-#include <sigc++/scoped_connection.h>
-#include "inkscape-application.h"
-#include "io/resource.h"
 
 #include <algorithm>
 #include <filesystem>
+#include <iostream>
+#include <memory>
+#include <set>
+#include <unordered_map>
+#include <vector>
+
 #include <cairo-ft.h>
 #include <cairomm/surface.h>
-#include <glibmm/ustring.h>
-#include <iostream>
-#include <libnrtype/font-factory.h>
-#include <libnrtype/font-instance.h>
 #include <glibmm/keyfile.h>
 #include <glibmm/miscutils.h>
-#include <memory>
+#include <glibmm/ustring.h>
 #include <pango/pango-fontmap.h>
 #include <pangomm/fontdescription.h>
 #include <pangomm/fontmap.h>
-#include <set>
 #include <sigc++/connection.h>
-#include <unordered_map>
-#include <vector>
+#include <sigc++/scoped_connection.h>
+
+#include "inkscape-application.h"
+#include "async/progress.h"
+#include "font/font-utils.h"
+#include "io/resource.h"
+#include "libnrtype/font-factory.h"
+#include "libnrtype/font-instance.h"
 
 namespace filesystem = std::filesystem;
 
@@ -86,18 +89,6 @@ double calculate_font_width(Pango::FontDescription& desc) {
     layout->get_extents(ink, rect);
     return static_cast<double>(ink.get_width()) / PANGO_SCALE / strlen(txt);
 }
-
-// construct font name from Pango face and family;
-// return font name as it is recorded in the font itself, as far as Pango allows it
-Glib::ustring get_full_font_name(Glib::RefPtr<Pango::FontFamily> ff, Glib::RefPtr<Pango::FontFace> face) {
-    if (!ff) return "";
-
-    auto family = ff->get_name();
-    auto face_name = face ? face->get_name() : Glib::ustring();
-    auto name = face_name.empty() ? family : family + ' ' + face_name;
-    return name;
-}
-
 
 // calculate value to order font's styles
 int get_font_style_order(const Pango::FontDescription& desc) {
@@ -192,42 +183,6 @@ void sort_font_families(std::vector<std::vector<FontInfo>>& fonts, bool sans_fir
         // alphabetical order:
         //return na.raw() < nb.raw();
     });
-}
-
-Glib::ustring get_fontspec(const Glib::ustring& family, const Glib::ustring& face, const Glib::ustring& variations) {
-    if (variations.empty()) {
-        return face.empty() ? family : family + ", " + face;
-    }
-    else {
-        auto desc = (face.empty() ? family : family + ", " + face) + " " + variations;
-        return desc;
-    }
-}
-
-Glib::ustring get_fontspec(const Glib::ustring& family, const Glib::ustring& face) {
-    return get_fontspec(family, face, Glib::ustring());
-}
-
-Glib::ustring get_face_style(const Pango::FontDescription& desc) {
-    Pango::FontDescription copy(desc);
-    copy.unset_fields(Pango::FontMask::FAMILY);
-    copy.unset_fields(Pango::FontMask::SIZE);
-    auto str = copy.to_string();
-    return str;
-}
-
-Glib::ustring get_inkscape_fontspec(const Glib::RefPtr<Pango::FontFamily>& ff, const Glib::RefPtr<Pango::FontFace>& face, const Glib::ustring& variations) {
-    if (!ff) return Glib::ustring();
-
-    return get_fontspec(ff->get_name(), face ? get_face_style(face->describe()) : Glib::ustring(), variations);
-}
-
-Pango::FontDescription get_font_description(const Glib::RefPtr<Pango::FontFamily>& ff, const Glib::RefPtr<Pango::FontFace>& face) {
-    if (!face) return Pango::FontDescription("sans serif");
-
-    auto desc = face->describe();
-    desc.unset_fields(Pango::FontMask::SIZE);
-    return desc;
 }
 
 // Font cache is a text file that stores under each font name some of its metadata, like average weight and height,
@@ -356,12 +311,10 @@ std::shared_ptr<const std::vector<std::vector<FontInfo>>> get_all_fonts(Async::P
     double counter = 0.0;
     for (auto ff : families) {
         bool synthetic_font = false;
-#if PANGO_VERSION_CHECK(1,46,0)
         auto default_face = ff->get_face();
         if (default_face && default_face->is_synthesized()) {
             synthetic_font = true;
         }
-#endif
         progress.report_or_throw(counter / families.size(), ff->get_name(), empty);
         std::vector<FontInfo> family;
         auto faces = ff->list_faces();
@@ -443,17 +396,6 @@ std::shared_ptr<const std::vector<std::vector<FontInfo>>> get_all_fonts(Async::P
     progress.report_or_throw(1, "", empty);
 
     return result;
-}
-
-Glib::ustring get_fontspec_without_variants(const Glib::ustring& fontspec) {
-    auto at = fontspec.rfind('@');
-    if (at != Glib::ustring::npos && at > 0) {
-        // remove variations
-        while (at > 0 && fontspec[at - 1] == ' ') at--; // trim spaces
-
-        return fontspec.substr(0, at);
-    }
-    return fontspec;
 }
 
 FontDiscovery::FontDiscovery() {

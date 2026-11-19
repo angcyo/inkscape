@@ -1,0 +1,7 @@
+
+This directory contains code to work with fonts that is NOT GUI dependent.
+
+It does not contain code for text layout.
+
+WIP: Not all font code has been moved here.
+

@@ -34,7 +34,7 @@
 #include <gtkmm/treepath.h>
 #include <pangomm/fontfamily.h>
 
-#include "libnrtype/font-utils.h" // canonize_fontspec
+#include "font/font-utils.h" // canonize_fontspec
 
 inline constexpr int FONT_FAMILIES_GROUP_SIZE = 30;
 

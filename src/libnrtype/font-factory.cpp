@@ -38,9 +38,9 @@
 #include "io/sys.h"
 #include "io/resource.h"
 
+#include "font/font-utils.h"
 #include "libnrtype/font-factory.h"
 #include "libnrtype/font-instance.h"
-#include "libnrtype/font-utils.h"
 #include "libnrtype/OpenTypeUtil.h"
 
 

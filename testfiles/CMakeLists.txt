@@ -186,16 +186,24 @@ add_unit_tests(TEST_SOURCES "svg-length-test.cpp"
                             "mocks/util-units-filename.cpp"
                     EXTRA_LIBS GLibmm::GLibmm 2Geom::2geom)
 
+include("${CMAKE_SOURCE_DIR}/src/font/CMakeUnit.txt")
+get_font_unit_lib()
+
+add_unit_tests(TEST_SOURCES "font/font-utils-test.cpp"
+
+                ENVIRONMENT "INKSCAPE_FONTCONFIG=${CMAKE_CURRENT_SOURCE_DIR}/rendering_tests/fonts/isolated.conf"
+                            "LSAN_OPTIONS=suppressions=${CMAKE_CURRENT_SOURCE_DIR}/lsan.suppression"
+                 EXTRA_LIBS font_unit_lib)
+
 include("${CMAKE_SOURCE_DIR}/src/libnrtype/CMakeUnit.txt")
 get_libnrtype_unit_lib()
 
 add_unit_tests(TEST_SOURCES "libnrtype/font-factory-test.cpp"
                             "libnrtype/font-instance-test.cpp"
-                            "libnrtype/font-utils-test.cpp"
 
                 ENVIRONMENT "INKSCAPE_FONTCONFIG=${CMAKE_CURRENT_SOURCE_DIR}/rendering_tests/fonts/isolated.conf"
                             "LSAN_OPTIONS=suppressions=${CMAKE_CURRENT_SOURCE_DIR}/lsan.suppression"
-                 EXTRA_LIBS libnrtype_unit_lib)
+		 EXTRA_LIBS libnrtype_unit_lib font_unit_lib)
 
 include("${CMAKE_SOURCE_DIR}/src/colors/CMakeUnit.txt")
 get_color_unit_lib()

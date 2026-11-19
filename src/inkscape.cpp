@@ -59,7 +59,6 @@
 #include "ui/tools/tool-base.h"
 #include "ui/util.h"
 #include "ui/widget/gtk-registry.h"
-#include "util/font-discovery.h"
 
 static bool desktop_is_active(SPDesktop const *d)
 {
