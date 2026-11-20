@@ -99,7 +99,7 @@ SimpleFilterModifier::SimpleFilterModifier(int flags)
         _hb_blend.set_valign(Gtk::Align::CENTER);
         _hb_blend.set_margin_top(0);
         _hb_blend.set_margin_bottom(1);
-        _hb_blend.set_margin_end(2);
+        _hb_blend.set_margin_end(4);
         _lb_blend.set_mnemonic_widget(_blend);
         UI::pack_start(_hb_blend, _lb_blend, false, false);
         UI::pack_start(_hb_blend, _blend, false, false);
