@@ -584,6 +584,10 @@ bool ClipboardManagerImpl::_copyNodes(SPDesktop *desktop, ObjectSet *set)
     node_tool->_multipath->copySelectedPath(builder);
     Geom::PathVector pathv = builder->peek();
 
+    // Were any nodes actually copied? Don't touch clipboard if not.
+    if (pathv.empty() || !first_path)
+        return false;
+
     // _createInternalClipboard done after copy, as deleting clipboard
     // document may trigger tool switch (as in PathParam::~PathParam)
     _createInternalClipboard();
@@ -591,10 +595,6 @@ bool ClipboardManagerImpl::_copyNodes(SPDesktop *desktop, ObjectSet *set)
     // Copy document height so that desktopVisualBounds() is equivalent in the
     // source document and the clipboard.
     _clipboardSPDoc->setWidthAndHeight(desktop->doc()->getWidth(), desktop->doc()->getHeight());
-
-    // Were any nodes actually copied?
-    if (pathv.empty() || !first_path)
-        return false;
 
     Inkscape::XML::Node *pathRepr = _doc->createElement("svg:path");
 
