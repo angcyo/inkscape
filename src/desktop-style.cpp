@@ -263,6 +263,10 @@ sp_desktop_set_style(Inkscape::ObjectSet *set, SPDesktop *desktop, SPCSSAttr *cs
             }
         }
         sp_repr_css_attr_unref(css_no_text);
+
+        if (auto const tool = desktop->getTool()) {
+            tool->use_tool_cursor();
+        }
     }
 }
 
