@@ -115,7 +115,11 @@ ToolBase::ToolBase(SPDesktop *desktop, std::string &&prefs_path, std::string &&c
     , mod_canvas_zoom_rubberband(Modifiers::Modifier::get(Modifiers::Type::CANVAS_ZOOM_RUBBERBAND))
     , mod_select_force_drag(Modifiers::Modifier::get(Modifiers::Type::SELECT_FORCE_DRAG))
 {
-    pref_observer = Inkscape::Preferences::PreferencesObserver::create(_prefs_path, [this] (auto &val) { set(val); });
+    pref_observer = Inkscape::Preferences::PreferencesObserver::create(_prefs_path, [this] (auto &val) {
+        // Tool cursor depends on style in prefs, so if prefs change invalidate the tool cursor.
+        use_tool_cursor();
+        set(val);
+    });
     set_cursor(_cursor_default);
     _desktop->getCanvas()->grab_focus();
 
