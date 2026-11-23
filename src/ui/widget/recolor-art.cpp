@@ -52,8 +52,6 @@ RecolorArt::RecolorArt(Glib::RefPtr<Gtk::Builder> const &builder)
     set_name("RecolorArt");
     append(get_widget<Gtk::Box>(builder, "recolor-art"));
     _solid_colors->set(Color(0x000000ff));
-    // when recolor widget is closed it detaches from desktop, ending session
-    signal_unmap().connect([this] { setDesktop(nullptr); });
 
     _color_wheel->connect_color_changed(static_cast<sigc::slot<void()>>([this]() {
         if(_blocker.pending()) {
@@ -256,7 +254,6 @@ void RecolorArt::setDesktop(SPDesktop *desktop)
  */
 void RecolorArt::generateVisualList()
 {
-    _color_model->remove_all();
     std::vector<Glib::RefPtr<ColorItem>> items;
     for (auto const &[key, value] : _manager.getSelectedColorsMap()) {
         auto old_color = value.second.value().old_color;
@@ -576,19 +573,20 @@ void RecolorArt::onLivePreviewToggled()
 
 void RecolorArt::showForSelection(SPDesktop *desktop)
 {
-    assert(desktop);
-
     setDesktop(desktop);
-    _sel_changed_conn = _desktop->getSelection()->connectChanged([this] (auto) {
+    _sel_changed_conn.disconnect();
+    _sel_modified_conn.disconnect();
+
+    if (desktop) {
+        _sel_changed_conn = _desktop->getSelection()->connectChanged([this] (auto) {
+            updateFromSelection();
+        });
+        _sel_modified_conn = _desktop->getSelection()->connectModified([this](Inkscape::Selection *selection, guint flags) {
+            if (_live_preview.property_active() && (flags & (SP_OBJECT_STYLE_MODIFIED_FLAG)))
+                selectionModified();
+        });
         updateFromSelection();
-    });
-
-    _sel_modified_conn = _desktop->getSelection()->connectModified([this](Inkscape::Selection *selection, guint flags) {
-        if (_live_preview.property_active() && (flags & (SP_OBJECT_STYLE_MODIFIED_FLAG)))
-            selectionModified();
-    });
-
-    updateFromSelection();
+    }
 }
 
 /*
@@ -611,6 +609,8 @@ void RecolorArt::updateFromSelection()
 
     auto items = selection->items();
     auto vec = std::vector<SPObject *>(items.begin(), items.end());
+
+    _color_model->remove_all();
     _manager = collect_colours(vec);
     if (!_manager.isColorsEmpty()) {
         generateVisualList();
@@ -631,6 +631,7 @@ void RecolorArt::showForObject(SPDesktop *desktop, SPObject *object)
     _color_wheel->setLightness(100.0);
     _color_wheel->setSaturation(100.0);
 
+    _color_model->remove_all();
     _manager = collect_colours({object});
     if (!_manager.isColorsEmpty()) {
         generateVisualList();

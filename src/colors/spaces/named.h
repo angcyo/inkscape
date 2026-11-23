@@ -28,6 +28,7 @@ public:
     Type getComponentType() const override { return Type::RGB; }
 
     static std::string getNameFor(unsigned int rgba);
+    bool canInterpolateColors() const override { return false; }
 
     class NameParser : public Colors::Parser
     {

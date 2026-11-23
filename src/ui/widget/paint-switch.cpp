@@ -203,10 +203,12 @@ public:
     }
 
     void clear_paints() override {
+        _spaces.clear();
         _color->clear();
         // TODO: Clear others when they support multiple-styles
         _selected_modes.clear();
     }
+    void add_space(std::shared_ptr<Colors::Space::AnySpace> const &space) override;
     void add_paint(std::string const &id, const SPIPaint *paint, double opacity) override;
     void show_best_mode() override;
 
@@ -335,6 +337,7 @@ public:
     PaintMode _mode = PaintMode::None;
     SPDocument* _document = nullptr;
     Gtk::Stack& _stack;
+    std::vector<std::shared_ptr<Colors::Space::AnySpace>> _spaces;
     FlatColorEditor _flat_color{get_color_type(), _color};
     GradientEditor _gradient{"/gradient-editor", get_color_type(), true, false};
     PatternEditor _pattern{"/pattern-editor", PatternManager::get()};
@@ -675,16 +678,25 @@ void PaintSwitchImpl::add_paint(std::string const &id, const SPIPaint *paint, do
     }
 }
 
+void PaintSwitchImpl::add_space(std::shared_ptr<Colors::Space::AnySpace> const &space)
+{
+    if (std::find(_spaces.begin(), _spaces.end(), space) == _spaces.end()) {
+        _spaces.emplace_back(space);
+    }
+}
+
 void PaintSwitchImpl::show_best_mode()
 {
-    if (_selected_modes.size() == 0) {
+    if (_spaces.size() > 1) {
+        show_placeholder(_("Multiple color spaces selected, make sure all items are the same color space first."), false);
+    } else if (_selected_modes.size() == 0) {
         show_placeholder(_("Nothing selected"), false);
     } else if (_selected_modes.size() == 1) {
         for (auto &[mode, count] : _selected_modes) {
             if (mode == PaintMode::None) {
                 show_placeholder(_("No paint"), false);
             } else if (mode == PaintMode::Solid || count == 1) {
-                // Solid color is the only mode that allows selected styles of the same time
+                // Solid color is the only mode that allows multiple styles (colors) of the same type
                 _set_mode(mode);
             } else {
                 // We could be more specific here as we know there are multiple 'gradients'
@@ -695,7 +707,6 @@ void PaintSwitchImpl::show_best_mode()
     } else if (_selected_modes.size() > 1) {
         show_placeholder(_("Multiple styles"), true);
     }
-
 }
 
 void PaintSwitchImpl::set_fill_rule(FillRule fill_rule)

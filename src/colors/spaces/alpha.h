@@ -27,6 +27,7 @@ public:
         : ProfileSpace(Type::Alpha, 0, "Alpha", "Alpha", "alpha")
     {}
 
+    bool canInterpolateColors() const override { return false; }
     std::shared_ptr<Colors::CMS::Profile> const getProfile() const override
     {
         static auto gray_profile = Colors::CMS::Profile::create_gray();

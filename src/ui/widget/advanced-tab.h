@@ -26,24 +26,24 @@ public:
     ~AdvancedTab() override = default;
 
     void setDesktop(SPDesktop *desktop);
-    void updateFromSelection(Selection *selection);
 
 private:
     Glib::RefPtr<Gtk::Builder> _builder;
-    Gtk::DropDown *_cmb_format = nullptr;
-    Gtk::DropDown *_cmb_interp = nullptr;
-    Gtk::Expander *_expander = nullptr;
+    Gtk::Box *_box = nullptr;
     RecolorArt *_recolor_widget = nullptr;
     SPDesktop *_desktop = nullptr;
 
-    void on_interp_changed();
-    sigc::connection _cms_conn;
-    void on_cms_changed();
+    bool _pause_updates = false;
+    bool _needs_update = false;
 
     sigc::connection _interp_conn;
     void rebuild_interp_model(bool is_inherited, Glib::ustring target_name);
     sigc::connection _format_conn;
     void rebuild_format_model(bool is_inherited, Glib::ustring target_name);
+
+protected:
+    void on_map() override;
+    void on_unmap() override;
 };
 
 } // namespace Inkscape::UI::Widget

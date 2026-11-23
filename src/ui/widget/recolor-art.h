@@ -70,6 +70,7 @@ public:
 
     void showForSelection(SPDesktop *desktop);
     void showForObject(SPDesktop *desktop, SPObject *object);
+    void updateFromSelection();
 
     void onResetClicked();
 
@@ -104,8 +105,6 @@ private:
     OperationBlocker _selection_blocker;
 
     void setDesktop(SPDesktop *desktop);
-    void updateFromSelection();
-
     void generateVisualList();
     void selectionModified();
     void layoutColorPicker(std::shared_ptr<Colors::ColorSet> updated_color = nullptr);

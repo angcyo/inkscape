@@ -154,8 +154,8 @@ public:
     SPDocument* _document = nullptr;
     SPDesktop* _desktop = nullptr;
     sigc::signal<void (std::shared_ptr<Colors::Space::AnySpace> const &)> _color_space_changed;
-    sigc::connection _tool_changed;
-    sigc::connection _cms_space_changed;
+    sigc::scoped_connection _tool_changed;
+    sigc::scoped_connection _cms_space_changed;
     std::unique_ptr<Preferences::PreferencesObserver> _prefs_observer;
 };
 

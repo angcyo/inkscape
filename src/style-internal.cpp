@@ -1624,6 +1624,12 @@ std::shared_ptr<Inkscape::Colors::Space::AnySpace> const SPIColorInterpolation::
     if (!_color_space_cache) {
         if (canHaveCMS()) {
             _color_space_cache = getCMS().findSvgColorSpace(_value);
+            if (!_color_space_cache) {
+                _color_space_cache = Colors::Manager::get().find(Colors::Space::Type::RGB);
+                if (set) {
+                    g_error("Couldn't find interolation color space '%s'", _value.c_str());
+                }
+            }
         } else {
             _color_space_cache = Colors::Manager::get().findSvgColorSpace(_value);
         }

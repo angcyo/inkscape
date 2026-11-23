@@ -26,6 +26,8 @@ public:
     OkHsv(): RGBBase(Type::OKHSV, "OkHsv", "OkHsv", "okhsv") {}
     ~OkHsv() override = default;
 
+    bool canInterpolateColors() const override { return false; }
+
     template <typename T, bool PremultipliedAlpha = false>
     inline static void spaceToProfile(T const *i, T *o)
     {

@@ -40,6 +40,7 @@ public:
     virtual void set_document(SPDocument* document) = 0;
 
     virtual void clear_paints() = 0;
+    virtual void add_space(std::shared_ptr<Colors::Space::AnySpace> const &space) = 0;
     virtual void add_paint(std::string const &id, const SPIPaint *paint, double opacity) = 0;
     virtual void set_fill_rule(FillRule fill_rule) = 0;
     virtual void show_best_mode() = 0;
