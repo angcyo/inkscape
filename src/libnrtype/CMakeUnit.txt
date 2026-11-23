@@ -22,6 +22,7 @@ function(get_libnrtype_unit_lib)
                                  "io/stream/bufferstream.cpp"
                                  "io/sys.cpp"
                                  "util/statics.cpp"
+                                 "font/font-utils.cpp"
                  )
     list(TRANSFORM libnrtype_unit_SRC PREPEND "${CMAKE_SOURCE_DIR}/src/")
     add_library(libnrtype_unit_lib SHARED "${libnrtype_unit_SRC}")
