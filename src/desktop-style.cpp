@@ -23,7 +23,9 @@
 
 #include "colors/color.h"
 #include "colors/color-set.h"
+#include "colors/document-cms.h"
 #include "desktop.h"
+#include "document.h"
 #include "filter-chemistry.h"
 #include "inkscape.h"
 #include "selection.h"
@@ -79,12 +81,33 @@ sp_desktop_set_color(SPDesktop *desktop, Color const &color, bool is_relative, b
         return;
     }
 
-    SPCSSAttr *css = sp_repr_css_attr_new();
-    sp_repr_css_set_property_string(css, fill ? "fill" : "stroke", color.toString(false));
-    sp_repr_css_set_property_double(css, fill ? "fill-opacity" : "stroke-opacity", color.getOpacity());
-    sp_desktop_set_style(desktop, css);
+    // Objects must be split into their interpolation spaces so colors can be set
+    // correctly into the objects in the right format and not all as one format.
+    std::vector<std::shared_ptr<Colors::Space::AnySpace>> spaces;
 
-    sp_repr_css_attr_unref(css);
+    for (auto item : desktop->getSelection()->items()) {
+        auto space = item->getColorSpace();
+        if (std::find(spaces.begin(), spaces.end(), space) == spaces.end()) {
+            spaces.emplace_back(space);
+        }
+    }
+
+    // Write first seen space, this isn't the best decision possible.
+    bool write_current = true;
+
+    for (auto space : spaces) {
+        auto color_str = desktop->getDocument()->getDocumentCMS().toDocumentColorString(color, space);
+
+        // We could construct these in the loop above
+        ObjectSet objects;
+
+        SPCSSAttr *css = sp_repr_css_attr_new();
+        sp_repr_css_set_property_string(css, fill ? "fill" : "stroke", color_str);
+        sp_repr_css_set_property_double(css, fill ? "fill-opacity" : "stroke-opacity", color.getOpacity());
+        sp_desktop_set_style(&objects, desktop, css, true, write_current, false);
+        sp_repr_css_attr_unref(css);
+        write_current = false;
+    }
 }
 
 /**
@@ -211,8 +234,7 @@ sp_desktop_set_style(Inkscape::ObjectSet *set, SPDesktop *desktop, SPCSSAttr *cs
         // Update item type's current style for all seleted item types
         // Remap some item type names (for tools that can create more than one item type)
         static const std::unordered_map<std::string, const char*> item_type_map = {
-            {"circle", "arc"},
-            {"polygon", "star"},
+
             {"text-flow", "text"},
             {"group", nullptr}
         };

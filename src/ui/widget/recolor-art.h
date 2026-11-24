@@ -44,7 +44,7 @@ class SPDesktop;
 
 namespace Inkscape::UI::Widget {
 
-class ColorNotebook;
+class ColorPickerPanel;
 class MultiMarkerColorPlate;
 
 struct ColorItem : public Glib::Object
@@ -70,6 +70,7 @@ public:
 
     void showForSelection(SPDesktop *desktop);
     void showForObject(SPDesktop *desktop, SPObject *object);
+    void updateFromSelection();
 
     void onResetClicked();
 
@@ -88,7 +89,7 @@ private:
     Gtk::Button &_reset;
     Gtk::CheckButton &_live_preview;
     Gtk::ListView &_list_view;
-    Inkscape::UI::Widget::ColorNotebook *_color_picker_wdgt = nullptr;
+    ColorPickerPanel *_color_picker_wdgt = nullptr;
     uint32_t _current_color_id;
     bool _is_preview = true;
 
@@ -104,8 +105,6 @@ private:
     OperationBlocker _selection_blocker;
 
     void setDesktop(SPDesktop *desktop);
-    void updateFromSelection();
-
     void generateVisualList();
     void selectionModified();
     void layoutColorPicker(std::shared_ptr<Colors::ColorSet> updated_color = nullptr);

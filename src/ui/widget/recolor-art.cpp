@@ -11,7 +11,6 @@
 #include <gtkmm/overlay.h>
 
 #include "actions/actions-tools.h"
-#include "color-notebook.h"
 #include "desktop.h"
 #include "document-undo.h"
 #include "multi-marker-color-plate.h"
@@ -22,6 +21,7 @@
 #include "seltrans.h"
 #include "selection.h" 
 #include "ui/tools/select-tool.h"
+#include "ui/widget/color-picker-panel.h"
 
 namespace Inkscape::UI::Widget {
 
@@ -52,8 +52,6 @@ RecolorArt::RecolorArt(Glib::RefPtr<Gtk::Builder> const &builder)
     set_name("RecolorArt");
     append(get_widget<Gtk::Box>(builder, "recolor-art"));
     _solid_colors->set(Color(0x000000ff));
-    // when recolor widget is closed it detaches from desktop, ending session
-    signal_unmap().connect([this] { setDesktop(nullptr); });
 
     _color_wheel->connect_color_changed(static_cast<sigc::slot<void()>>([this]() {
         if(_blocker.pending()) {
@@ -220,6 +218,9 @@ void RecolorArt::setDesktop(SPDesktop *desktop)
         return;
     }
 
+    _color_picker_wdgt->set_desktop(desktop);
+    _color_picker_wdgt->set_document(desktop ? desktop->getDocument() : nullptr);
+
     if (_desktop) {
         _sel_changed_conn.disconnect();
         _sel_modified_conn.disconnect();
@@ -253,7 +254,6 @@ void RecolorArt::setDesktop(SPDesktop *desktop)
  */
 void RecolorArt::generateVisualList()
 {
-    _color_model->remove_all();
     std::vector<Glib::RefPtr<ColorItem>> items;
     for (auto const &[key, value] : _manager.getSelectedColorsMap()) {
         auto old_color = value.second.value().old_color;
@@ -272,9 +272,7 @@ void RecolorArt::generateVisualList()
  */
 void RecolorArt::layoutColorPicker(std::shared_ptr<Colors::ColorSet> updated_color)
 {
-    _color_picker_wdgt = Gtk::make_managed<ColorNotebook>(_solid_colors);
-    _color_picker_wdgt->set_label(_("<b>Selected Color</b>"));
-
+    _color_picker_wdgt = ColorPickerPanel::make_managed(Colors::Space::Type::RGB, ColorPickerPanel::Rect, _solid_colors);
     _solid_colors->signal_changed.connect([this]() { onColorPickerChanged(); });
 
     for (auto child : _color_picker_container.get_children()) {
@@ -394,10 +392,7 @@ void RecolorArt::onOriginalColorClicked(uint32_t color_id)
     }
     _current_color_id = color_id;
     if (auto color = _manager.getSelectedNewColor(color_id)) {
-        _solid_colors->set(*color);                          // update sliders under the colorwheel in the colorlist page
-        _color_picker_wdgt->setCurrentColor(_solid_colors); /* solves the issue of needing to create new
-         colornotebook every time the _solid_colors changes because it only changes the sliders not the
-         color wheel it self in colornotebook */
+        _solid_colors->set(*color);
     }
 }
 
@@ -578,19 +573,20 @@ void RecolorArt::onLivePreviewToggled()
 
 void RecolorArt::showForSelection(SPDesktop *desktop)
 {
-    assert(desktop);
-
     setDesktop(desktop);
-    _sel_changed_conn = _desktop->getSelection()->connectChanged([this] (auto) {
+    _sel_changed_conn.disconnect();
+    _sel_modified_conn.disconnect();
+
+    if (desktop) {
+        _sel_changed_conn = _desktop->getSelection()->connectChanged([this] (auto) {
+            updateFromSelection();
+        });
+        _sel_modified_conn = _desktop->getSelection()->connectModified([this](Inkscape::Selection *selection, guint flags) {
+            if (_live_preview.property_active() && (flags & (SP_OBJECT_STYLE_MODIFIED_FLAG)))
+                selectionModified();
+        });
         updateFromSelection();
-    });
-
-    _sel_modified_conn = _desktop->getSelection()->connectModified([this](Inkscape::Selection *selection, guint flags) {
-        if (_live_preview.property_active() && (flags & (SP_OBJECT_STYLE_MODIFIED_FLAG)))
-            selectionModified();
-    });
-
-    updateFromSelection();
+    }
 }
 
 /*
@@ -613,6 +609,8 @@ void RecolorArt::updateFromSelection()
 
     auto items = selection->items();
     auto vec = std::vector<SPObject *>(items.begin(), items.end());
+
+    _color_model->remove_all();
     _manager = collect_colours(vec);
     if (!_manager.isColorsEmpty()) {
         generateVisualList();
@@ -633,6 +631,7 @@ void RecolorArt::showForObject(SPDesktop *desktop, SPObject *object)
     _color_wheel->setLightness(100.0);
     _color_wheel->setSaturation(100.0);
 
+    _color_model->remove_all();
     _manager = collect_colours({object});
     if (!_manager.isColorsEmpty()) {
         generateVisualList();

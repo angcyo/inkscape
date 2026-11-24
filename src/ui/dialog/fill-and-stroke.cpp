@@ -21,6 +21,10 @@
 #include <gtkmm/grid.h>
 #include <gtkmm/image.h>
 
+#include "colors/document-cms.h"
+#include "colors/manager.h"
+#include "colors/spaces/base.h"
+#include "colors/spaces/cms.h"
 #include "desktop.h"
 #include "desktop-style.h"
 #include "document-undo.h"
@@ -41,6 +45,8 @@ namespace Inkscape::UI::Dialog {
 
 FillAndStroke::FillAndStroke()
     : DialogBase("/dialogs/fillstroke", "FillStroke")
+    , _colorspace_selector(Gtk::make_managed<UI::Widget::IconComboBox>())
+    , _colorspace_box(Gtk::make_managed<Gtk::Box>())
     , _page_fill(Gtk::make_managed<UI::Widget::NotebookPage>(1, 1))
     , _page_stroke_paint(Gtk::make_managed<UI::Widget::NotebookPage>(1, 1))
     , _page_stroke_style(Gtk::make_managed<UI::Widget::NotebookPage>(1, 1))
@@ -53,6 +59,16 @@ FillAndStroke::FillAndStroke()
                           UI::Widget::SimpleFilterModifier::OPACITY)
 {
     set_spacing(2);
+
+    // This first control is mostly invisible to most users and is only visible
+    // when the interpolation color spaces of the selected objects differ from
+    // the document's color space. And the drop down only enabled when set.
+    UI::pack_start(*_colorspace_box, *_colorspace_selector, true, true);
+    UI::pack_start(*this, *_colorspace_box, false, true);
+    _colorspace_box->set_visible(false);
+    _colorspace_selector->set_sensitive(false);
+    _colorspace_selector->set_label_max_chars(-1);
+
     UI::pack_start(*this, _notebook, true, true);
 
     _notebook.append_page(*_page_fill, _createPageTabLabel(_("_Fill"), INKSCAPE_ICON("object-fill")));
@@ -335,6 +351,7 @@ void FillAndStroke::_ConnectPaintSignals(UI::Widget::PaintSwitch *paint_switch, 
 void FillAndStroke::_updateFromSelection()
 {
     if (!getDesktop()) return;
+    auto scoped = _cms_space_dropdown.block();
 
     _ignore_updates = true;
 
@@ -345,10 +362,6 @@ void FillAndStroke::_updateFromSelection()
     if (_fill_switch)       _fill_switch->set_sensitive(!is_empty);
     if (_stroke_switch)     _stroke_switch->set_sensitive(!is_empty);
     if (strokeStyleWdgt)    strokeStyleWdgt->set_sensitive(!is_empty);
-
-    if (_advanced_tab) {
-        _advanced_tab->updateFromSelection(selection);
-    }
 
     if (is_empty) {
         if (_fill_switch) {
@@ -367,67 +380,47 @@ void FillAndStroke::_updateFromSelection()
         anchor = items.front(); 
     }
 
-    auto update_channel = [&](UI::Widget::PaintSwitch* pswitch, bool is_fill) {
-        if (!pswitch) return;
+    // Clear interpolation spaces
+    if (_fill_switch) _fill_switch->clear_paints();
+    if (_stroke_switch) _stroke_switch->clear_paints();
 
-        SPStyle query(getDesktop()->getDocument());
-        int property = is_fill ? QUERY_STYLE_PROPERTY_FILL : QUERY_STYLE_PROPERTY_STROKE;
-        int result = sp_desktop_query_style(getDesktop(), &query, property);
+    std::shared_ptr<Colors::Space::AnySpace> primary_space;
+    std::shared_ptr<Colors::Space::AnySpace> document_space = getDocument()->getDocumentCMS().getDocumentColorSpace();
+    bool multispace = false;
+    int total = 0;
+    int set_count = 0;
 
-        if (result == QUERY_STYLE_MULTIPLE_DIFFERENT) {
-            pswitch->show_placeholder(_("Multiple styles"), true);
-            return;
-        }
+    for (auto item : items) {
+        if (auto style = item->style) {
+            auto space = item->getColorSpace();
 
-        UI::Widget::PaintMode mode = UI::Widget::PaintMode::None;
-        Inkscape::Colors::Color color(0x000000ff);
-        double opacity = 1.0;
-        const SPIPaint* paint_ptr = nullptr;
-        bool color_found = false;
+            total++;
+            set_count += style->color_interpolation.set;
+            if (!primary_space) {
+                primary_space = space;
+            } else if (primary_space != space) {
+                multispace = true;
+            }
 
-        if (anchor && anchor->style) {
-            paint_ptr = anchor->style->getFillOrStroke(is_fill);
-            opacity = is_fill ? (double)anchor->style->fill_opacity : (double)anchor->style->stroke_opacity;
-            
-            if (paint_ptr) {
-                mode = Inkscape::UI::Widget::get_mode_from_paint(*paint_ptr);
-
-                if (paint_ptr->isColor()) {
-                    color = paint_ptr->getColor();
-                    color_found = true;
-                }
+            if (_fill_switch) {
+                using Rule = Inkscape::UI::Widget::FillRule;
+                _fill_switch->set_fill_rule(style->fill_rule.computed == SP_WIND_RULE_NONZERO ? Rule::NonZero : Rule::EvenOdd);
+                _fill_switch->add_space(space);
+                _fill_switch->add_paint(item->getId(), style->fill.upcast(), (double)style->fill_opacity);
+            }
+            if (_stroke_switch) {
+                _fill_switch->add_space(space);
+                _stroke_switch->add_paint(item->getId(), style->stroke.upcast(), (double)style->stroke_opacity);
             }
         }
+    }
 
-        if (!color_found) {
-            if (auto from_desktop = sp_desktop_get_color(getDesktop(), is_fill)) {
-                color = *from_desktop;
-                if (!paint_ptr || !paint_ptr->set) {
-                    mode = UI::Widget::PaintMode::Solid;
-                }
-            }
-        }
+    if (_fill_switch) _fill_switch->show_best_mode();
+    if (_stroke_switch) _stroke_switch->show_best_mode();
 
-        pswitch->set_mode(mode);
-        color.setOpacity(opacity);
-
-        if(mode == UI::Widget::PaintMode::Solid) {
-            pswitch->set_color(color);
-        } else if(mode == UI::Widget::PaintMode::None) {
-            pswitch->show_placeholder("No Paint", false);
-        }
-        if (paint_ptr) {
-            pswitch->update_from_paint(*paint_ptr);
-        }
-
-        if (is_fill && anchor && anchor->style) {
-             using Rule = Inkscape::UI::Widget::FillRule;
-             pswitch->set_fill_rule(anchor->style->fill_rule.computed == SP_WIND_RULE_NONZERO ? Rule::NonZero : Rule::EvenOdd);
-        }
-    };
-
-    update_channel(_fill_switch.get(), true);
-    update_channel(_stroke_switch.get(), false);
+    _colorspace_box->set_visible(primary_space && !multispace && (set_count == total || primary_space != document_space));
+    _colorspace_selector->set_sensitive(!multispace && set_count == total);
+    _colorspace_selector->set_active_by_id(primary_space ? primary_space->getId() : 0);
 
     _ignore_updates = false;
 }
@@ -485,11 +478,59 @@ void FillAndStroke::desktopReplaced()
 
 void FillAndStroke::documentReplaced()
 {
+    _cms_space_changed.disconnect();
+
+    auto document = getDesktop() ? getDesktop()->getDocument() : nullptr;
+    if (document) {
+        _cms_space_changed = document->getDocumentCMS().connectChanged([this]() {
+            rebuild_color_space_list();
+        });
+        rebuild_color_space_list();
+        _cms_space_dropdown = _colorspace_selector->signal_changed().connect([this](int id) {
+            if (auto document = getDocument()) {
+                auto space = Colors::Manager::get().findById(id);
+                if (!space) {
+                    space = document->getDocumentCMS().getSpace(id);
+                }
+                for (auto&& item : getDesktop()->getSelection()->items_vector()) {
+                    item->setColorSpace(space);
+                }
+                DocumentUndo::done(document, RC_("CMS", "Object Color Space Changed"), INKSCAPE_ICON("colorspace-cms"));
+            }
+        });
+    }
     if (_fill_switch) {
-        _fill_switch->set_document(getDesktop() ? getDesktop()->getDocument() : nullptr);
+        _fill_switch->set_document(document);
     }
     if (_stroke_switch) {
-        _stroke_switch->set_document(getDesktop() ? getDesktop()->getDocument() : nullptr);
+        _stroke_switch->set_document(document);
+    }
+}
+
+void FillAndStroke::rebuild_color_space_list()
+{
+    // A full list of available spaces, not just cms ones
+    // Don't confuse this list of interpolation spaces with the list
+    // of color pickers in color-picker-panel which has similar code
+
+    _colorspace_selector->clear();
+
+    if (auto document = getDocument()) {
+        auto cms_spaces = document->getDocumentCMS().getSpaces();
+
+        for (auto&& cms : cms_spaces) {
+            _colorspace_selector->add_row(cms->getIcon(), _(cms->getShortName().c_str()), cms->getId());
+        }
+        if (!cms_spaces.empty()) {
+            _colorspace_selector->add_separator();
+        }
+        for (auto&& space : Colors::Manager::get().spaces()) {
+            if (space->canInterpolateColors()) {
+                _colorspace_selector->add_row(space->getIcon(), _(space->getShortName().c_str()), space->getId());
+            }
+        }
+        _colorspace_selector->add_separator();
+        _colorspace_selector->add_row("remove-color", _("Remove Object Interpolation"), 45000);
     }
 }
 

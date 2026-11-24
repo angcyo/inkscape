@@ -24,18 +24,14 @@ class Alpha : public ProfileSpace<true>
 {
 public:
     Alpha()
-        : ProfileSpace(Type::Alpha, 0, "Alpha", "Alpha", "")
+        : ProfileSpace(Type::Alpha, 0, "Alpha", "Alpha", "alpha")
     {}
 
+    bool canInterpolateColors() const override { return false; }
     std::shared_ptr<Colors::CMS::Profile> const getProfile() const override
     {
         static auto gray_profile = Colors::CMS::Profile::create_gray();
         return gray_profile;
-    }
-
-    std::string toString(std::vector<double> const &values, bool opacity) const override
-    {
-        return "";
     }
 };
 

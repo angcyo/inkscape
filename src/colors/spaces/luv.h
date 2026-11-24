@@ -39,7 +39,7 @@ public:
     constexpr static double MIN_V = -200;
     constexpr static double MAX_V = 120;
 
-    Luv(): XYZBase(Type::LUV, "Luv", "Luv", "color-selector-luv") {}
+    Luv(): XYZBase(Type::LUV, "Luv", "Luv", "luv") {}
     ~Luv() override = default;
 
     /**
@@ -137,8 +137,6 @@ public:
 
     static std::vector<double> fromCoordinates(std::vector<double> const &in);
     static std::vector<double> toCoordinates(std::vector<double> const &in);
-
-    std::string toString(std::vector<double> const &values, bool opacity) const override { return ""; }
 };
 
 } // namespace Inkscape::Colors::Space

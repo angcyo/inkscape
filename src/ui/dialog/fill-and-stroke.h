@@ -21,6 +21,7 @@
 
 #include "ui/dialog/dialog-base.h"
 #include "ui/widget/advanced-tab.h"
+#include "ui/widget/generic/icon-combobox.h"
 #include "ui/widget/object-composite-settings.h"
 #include "ui/widget/paint-switch.h"
 #include "ui/widget/style-subject.h"
@@ -52,8 +53,13 @@ public:
     void showPageStrokeStyle();
     static FillAndStroke *get_fill_and_stroke_panel(SPDesktop *desktop);
 
+    void rebuild_color_space_list();
+
 protected:
     Gtk::Notebook   _notebook;
+
+    Gtk::Box                    *_colorspace_box = nullptr;
+    UI::Widget::IconComboBox    *_colorspace_selector = nullptr;
 
     UI::Widget::NotebookPage    *_page_fill         = nullptr;
     UI::Widget::NotebookPage    *_page_stroke_paint = nullptr;
@@ -91,6 +97,8 @@ private:
     std::vector<Gtk::Label *> _tab_labels;
 
     sigc::scoped_connection _switch_page_conn;
+    sigc::scoped_connection _cms_space_changed;
+    sigc::scoped_connection _cms_space_dropdown;
 };
 
 } // namespace Dialog
