@@ -516,8 +516,8 @@ SPCanvas {
   font-size: smaller;
 }
 
-#SimpleFilterModifier #InkSpinScale {
-    padding: 2px 4px;
+#SimpleFilterModifier ink-spinbutton {
+margin: 8px 4px;
 }
 
 #CompletionPopup entry {
