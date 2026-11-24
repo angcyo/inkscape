@@ -77,6 +77,9 @@ public:
     // Retrieves style information about a font family.
     std::vector<StyleNames> GetUIStyles(const Glib::RefPtr<Pango::FontFamily> &in);
 
+    std::string get_variations_string(const Glib::RefPtr<Pango::FontFace> &face);
+    std::string get_variations_string(const PangoFontFace *face);
+
     std::vector<Glib::RefPtr<Pango::FontFamily>> get_font_families();
 
     // Various functions to get a FontInstance from different descriptions.

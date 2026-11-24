@@ -102,6 +102,7 @@ public:
     double        GetTypoAscent()  const { return _ascent; }
     double        GetTypoDescent() const { return _descent; }
     double        GetXHeight()     const { return _xheight; }
+    double        GetCapHeight()   const { return _capheight; }
     double        GetMaxAscent()   const { return _ascent_max; }
     double        GetMaxDescent()  const { return _descent_max; }
     const double* GetBaselines()   const { return _baselines; }
@@ -177,6 +178,7 @@ private:
     double  _ascent;       // Typographic ascent.
     double  _descent;      // Typographic descent.
     double  _xheight;      // x-height of font.
+    double  _capheight;    // cap-height of font.
     double  _ascent_max;   // Maximum ascent of all glyphs in font.
     double  _descent_max;  // Maximum descent of all glyphs in font.
     int     _design_units; // Design units, (units per em, typically 1000 or 2048).

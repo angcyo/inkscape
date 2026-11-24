@@ -7,7 +7,7 @@
  * Released under GNU GPL v2+, read the file 'COPYING' for more information.
  */
 
-#include "libnrtype/font-utils.h"
+#include "font/font-utils.h"
 #include <gtest/gtest.h>
 #include "../test-utils.h"
 
@@ -89,27 +89,92 @@ INSTANTIATE_TEST_SUITE_P(FontUtilsTest, CanonizeFontspec, testing::Values(
 
 struct data2 : traced_data
 {
-    const char* in;
-    std::map<std::string, std::string> out;
+    Glib::ustring family;
+    Glib::ustring face;
+    Glib::ustring variations;
+    Glib::ustring fontspec;
 };
 
 void PrintTo(const data2 &obj, std::ostream *oo)
 {
+    *oo << "'" << obj.fontspec << "'";
+};
+
+class GetFontspec : public testing::TestWithParam<data2>
+{
+};
+
+TEST_P(GetFontspec, get_fontspec)
+{
+    data2 test = GetParam();
+    EXPECT_EQ(Inkscape::get_fontspec(test.family, test.face, test.variations), test.fontspec);
+};
+
+// clang-format off
+INSTANTIATE_TEST_SUITE_P(FontUtilsTest, GetFontspec, testing::Values(
+    _P(data2, "Sans",           "Bold",               "",                    "Sans Bold"),
+    _P(data2, "Serif",          "Bold Italic",        "",                    "Serif Bold Italic"),
+    _P(data2, "Monospace",      "Normal",             "",                    "Monospace"),
+
+    _P(data2, "fam1, fam2",     "Normal",             "",                    "fam1, fam2"),
+
+    _P(data2, "Cascadia Code",  "Ultra-Light",        "wght=200",            "Cascadia Code Ultra-Light"),
+    _P(data2, "Cascadia Code",  "Ultra-Light Italic", "wght=200",            "Cascadia Code Ultra-Light Italic"),
+    _P(data2, "Cascadia Code",  "Light",              "wght=300",            "Cascadia Code Light"),
+    _P(data2, "Cascadia Code",  "Light Italic",       "wght=300",            "Cascadia Code Light Italic"),
+    _P(data2, "Cascadia Code",  "Normal",             "",                    "Cascadia Code"),
+    _P(data2, "Cascadia Code",  "Italic",             "",                    "Cascadia Code Italic"),
+    _P(data2, "Cascadia Code",  "Semi-Bold",          "wght=600",            "Cascadia Code Semi-Bold"),
+    _P(data2, "Cascadia Code",  "Semi-Bold Italic",   "wght=600",            "Cascadia Code Semi-Bold Italic"),
+    _P(data2, "Cascadia Code",  "Bold",               "wght=700",            "Cascadia Code Bold"),
+    _P(data2, "Cascadia Code",  "Bold Italic",        "wght=700",            "Cascadia Code Bold Italic"),
+    _P(data2, "Cascadia Code",  "Normal",             "wght=450",            "Cascadia Code weight=450"),
+    _P(data2, "Cascadia Code",  "Italic",             "wght=450",            "Cascadia Code weight=450 Italic"),
+
+    _P(data2, "Decovar Alpha",  "Normal",             "WMX2=1000",           "Decovar Alpha @WMX2=1000"),
+    _P(data2, "Decovar Alpha",  "Normal",             "WMX2=1000",           "Decovar Alpha @WMX2=1000"),
+    _P(data2, "Decovar Alpha",  "Normal",             "TRMG=1000",           "Decovar Alpha @TRMG=1000"),
+    _P(data2, "Decovar Alpha",  "Normal",             "TRMG=1000,WMX2=1000", "Decovar Alpha @TRMG=1000,WMX2=1000"),
+    _P(data2, "Decovar Alpha",  "Normal",             "WMX2=1000,TRMG=1000", "Decovar Alpha @TRMG=1000,WMX2=1000"),
+
+    _P(data2, "Nabla",          "Normal",             "EDPT=70,EHLT=20",     "Nabla @EDPT=70,EHLT=20"),
+    _P(data2, "Nabla",          "Normal",             "EHLT=20,EDPT=70",     "Nabla @EDPT=70,EHLT=20"),
+
+    _P(data2, "Red Hat Display","weight=596",         "",                    "Red Hat Display weight=596"),
+    _P(data2, "Red Hat Display","weight=596 Italic",  "",                    "Red Hat Display weight=596 Italic"),
+
+    _P(data2, "Rocher Color",   "Normal",             "",                    "Rocher Color"),
+    _P(data2, "Rocher Color",   "Normal",             "BVEL=0",              "Rocher Color @BVEL=0"),
+    _P(data2, "Rocher Color",   "Normal",             "SHDW=0",              "Rocher Color @SHDW=0"),
+    _P(data2, "Rocher Color",   "Normal",             "SHDW=10,BVEL=20",     "Rocher Color @BVEL=20,SHDW=10"),
+
+    _P(data2, "Vazirmatn",      "Normal",             "wght=450",            "Vazirmatn weight=450")
+));
+// clang-format on
+
+struct data3 : traced_data
+{
+    const char* in;
+    std::map<std::string, std::string> out;
+};
+
+void PrintTo(const data3 &obj, std::ostream *oo)
+{
     *oo << "'" << obj.in << "'";
 };
 
-class ParseVariations : public testing::TestWithParam<data2>
+class ParseVariations : public testing::TestWithParam<data3>
 {
 };
 
 TEST_P(ParseVariations, parse_variations)
 {
-    data2 test = GetParam();
+    data3 test = GetParam();
     EXPECT_EQ(Inkscape::parse_variations(test.in), test.out);
 };
 
 INSTANTIATE_TEST_SUITE_P(FontUtilsTest, ParseVariations, testing::Values(
-    _P(data2, "@aaaa=100,bbbb=200,cccc=1.5", {{"aaaa", "100"}, {"bbbb", "200"}, {"cccc", "1.5"}})
+    _P(data3, "@aaaa=100,bbbb=200,cccc=1.5", {{"aaaa", "100"}, {"bbbb", "200"}, {"cccc", "1.5"}})
 ));
 
 } // namespace

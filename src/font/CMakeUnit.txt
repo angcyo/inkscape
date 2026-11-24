@@ -1,0 +1,26 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+
+set(font_unit_SRC
+	font-utils.cpp
+    
+	# -------
+	# Headers
+	font-utils.h
+)
+
+function(get_font_unit_lib)
+    list(TRANSFORM font_unit_SRC PREPEND "font/")
+
+    list(PREPEND libnrtype_unit_SRC
+                                 "io/stream/inkscapestream.cpp"
+                                 "io/stream/gzipstream.cpp"
+                                 "io/stream/bufferstream.cpp"
+                                 "io/sys.cpp"
+                                 "util/statics.cpp"
+                 )
+    list(TRANSFORM font_unit_SRC PREPEND "${CMAKE_SOURCE_DIR}/src/")
+    add_library(font_unit_lib SHARED "${font_unit_SRC}")
+    pkg_check_modules(FONT_UNIT_DEPS REQUIRED IMPORTED_TARGET zlib fontconfig freetype2 pangoft2 cairomm-1.16 pangomm-2.48)
+    target_link_libraries(font_unit_lib 2Geom::2geom GLibmm::GLibmm PkgConfig::FONT_UNIT_DEPS)
+    make_target_unit_testable(font_unit_lib)
+endfunction(get_font_unit_lib)

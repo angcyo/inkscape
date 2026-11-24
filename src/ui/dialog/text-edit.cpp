@@ -42,6 +42,7 @@
 #include "dialog-container.h"
 #include "document-undo.h"
 #include "inkscape.h"
+#include "libnrtype/font-factory.h"
 #include "libnrtype/font-lister.h"
 #include "object/sp-flowtext.h"
 #include "object/sp-text.h"

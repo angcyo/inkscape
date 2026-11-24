@@ -258,6 +258,8 @@ FontVariations::FontVariations()
 // Update GUI based on query.
 void FontVariations::update(Glib::ustring const &font_spec)
 {
+    assert(_ot_axes.size() == _axes.size());
+
     // Get visible axes from FontInstance
     auto font_instance = FontFactory::get().FaceFromFontSpecification(font_spec.c_str());
     const auto& ot_axes = font_instance ? font_instance->get_opentype_varaxes() : std::vector<OTVarAxis>();
@@ -393,7 +395,7 @@ int FontVariations::measure_height(int axis_count) {
     build_ui(axes);
     int min=0,nat=0,b1,b2;
     measure(Gtk::Orientation::VERTICAL, 9999, min, nat, b1, b2);
-    build_ui({});
+    build_ui(_ot_axes); // Restore actual axes.
     return nat;
 }
 
